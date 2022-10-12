@@ -99,11 +99,12 @@ export function Datatable<D extends Record<string, unknown>>({
         ...initialTableState,
       },
       isRowSelectable,
-      manualPagination: typeof pageCount !== 'undefined',
-      pageCount,
       autoResetExpanded: false,
       autoResetSelectedRows: false,
       getRowId,
+      ...(typeof pageCount !== 'undefined'
+        ? { manualPagination: true, pageCount }
+        : {}),
     },
     useFilters,
     useGlobalFilter,
