@@ -1,6 +1,5 @@
 import { Bell, Trash2 } from 'react-feather';
 import { useStore } from 'zustand';
-import { useCurrentStateAndParams } from '@uirouter/react';
 
 import { withCurrentUser } from '@/react-tools/withCurrentUser';
 import { react2angular } from '@/react-tools/react2angular';
@@ -19,7 +18,10 @@ import { ToastNotification } from './types';
 import { columns } from './columns';
 
 const storageKey = 'notifications-list';
-const settingsStore = createPersistedStore(storageKey, 'time');
+const settingsStore = createPersistedStore(storageKey, {
+  id: 'time',
+  desc: true,
+});
 
 export function NotificationsView() {
   const { user } = useUser();
@@ -31,10 +33,6 @@ export function NotificationsView() {
   const breadcrumbs = 'Notifications';
   const settings = useStore(settingsStore);
   const [search, setSearch] = useSearchBarState(storageKey);
-
-  const {
-    params: { id },
-  } = useCurrentStateAndParams();
 
   return (
     <>

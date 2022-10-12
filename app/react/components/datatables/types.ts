@@ -29,11 +29,13 @@ export interface SortableTableSettings {
 
 export function sortableSettings(
   set: ZustandSetFunc<SortableTableSettings>,
-  initialSortBy = 'name',
-  desc = false
+  initialSortBy: string | { id: string; desc: boolean }
 ): SortableTableSettings {
   return {
-    sortBy: { id: initialSortBy, desc },
+    sortBy:
+      typeof initialSortBy === 'string'
+        ? { id: initialSortBy, desc: false }
+        : initialSortBy,
     setSortBy: (id: string, desc: boolean) => set({ sortBy: { id, desc } }),
   };
 }
@@ -72,7 +74,7 @@ export interface BasicTableSettings
 
 export function createPersistedStore<T extends BasicTableSettings>(
   storageKey: string,
-  initialSortBy?: string,
+  initialSortBy: string | { id: string; desc: boolean } = 'name',
   create: (set: ZustandSetFunc<T>) => Omit<T, keyof BasicTableSettings> = () =>
     ({} as T)
 ) {
