@@ -1,5 +1,6 @@
 import { Bell, Trash2 } from 'react-feather';
 import { useStore } from 'zustand';
+import { useCurrentStateAndParams } from '@uirouter/react';
 
 import { withCurrentUser } from '@/react-tools/withCurrentUser';
 import { react2angular } from '@/react-tools/react2angular';
@@ -34,6 +35,15 @@ export function NotificationsView() {
   const settings = useStore(settingsStore);
   const [search, setSearch] = useSearchBarState(storageKey);
 
+  const {
+    params: { id: activeItemId },
+  } = useCurrentStateAndParams();
+
+  const initialPage = getInitialPage(
+    activeItemId,
+    settings.pageSize,
+    userNotifications
+  );
   return (
     <>
       <PageHeader title="Notifications" breadcrumbs={breadcrumbs} reload />
@@ -53,6 +63,11 @@ export function NotificationsView() {
         onSortByChange={settings.setSortBy}
         searchValue={search}
         onSearchChange={setSearch}
+        initialTableState={{
+          pageIndex: initialPage,
+        }}
+        getRowId={(row) => row.id}
+        highlightedItemId={activeItemId}
       />
     </>
   );
@@ -83,3 +98,25 @@ export const NotificationsViewAngular = react2angular(
   withUIRouter(withReactQuery(withCurrentUser(NotificationsView))),
   []
 );
+
+function getInitialPage<T extends { id: string }>(
+  activeItemId: string,
+  pageSize: number,
+  rows: Array<T>
+) {
+  const totalRows = rows.length;
+
+  if (!activeItemId || pageSize > totalRows) {
+    return 0;
+  }
+
+  const paginatedData = [...Array(Math.ceil(totalRows / pageSize))].map(
+    (_, i) => rows.slice(pageSize * i, pageSize + pageSize * i)
+  );
+
+  const itemPage = paginatedData.findIndex((sub) =>
+    sub.some((row) => row.id === activeItemId)
+  );
+
+  return itemPage;
+}

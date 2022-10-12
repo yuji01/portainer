@@ -13,6 +13,7 @@ import {
 } from 'react-table';
 import { ReactNode } from 'react';
 import { useRowSelectColumn } from '@lineup-lite/hooks';
+import clsx from 'clsx';
 
 import { IconProps } from '@@/Icon';
 
@@ -44,6 +45,7 @@ export interface Props<D extends Record<string, unknown>> {
   pageCount?: number;
   initialSortBy?: BasicTableSettings['sortBy'];
   initialPageSize?: BasicTableSettings['pageSize'];
+  highlightedItemId?: string;
 
   searchValue: string;
   onSearchChange(search: string): void;
@@ -53,7 +55,11 @@ export interface Props<D extends Record<string, unknown>> {
   // send state up
   onPageChange?(page: number): void;
 
-  renderRow?(row: Row<D>, rowProps: TableRowProps): ReactNode;
+  renderRow?(
+    row: Row<D>,
+    rowProps: TableRowProps,
+    highlightedItemId?: string
+  ): ReactNode;
   expandable?: boolean;
 }
 
@@ -85,6 +91,7 @@ export function Datatable<D extends Record<string, unknown>>({
 
   renderRow = defaultRenderRow,
   expandable = false,
+  highlightedItemId,
 }: Props<D>) {
   const tableInstance = useTable<D>(
     {
@@ -134,7 +141,9 @@ export function Datatable<D extends Record<string, unknown>>({
           />
           <DatatableContent<D>
             tableInstance={tableInstance}
-            renderRow={renderRow}
+            renderRow={(row, rowProps) =>
+              renderRow(row, rowProps, highlightedItemId)
+            }
             emptyContentLabel={emptyContentLabel}
             isLoading={isLoading}
             onSortChange={handleSortChange}
@@ -175,13 +184,16 @@ export function Datatable<D extends Record<string, unknown>>({
 
 function defaultRenderRow<D extends Record<string, unknown>>(
   row: Row<D>,
-  rowProps: TableRowProps
+  rowProps: TableRowProps,
+  highlightedItemId?: string
 ) {
   return (
     <Table.Row<D>
       key={rowProps.key}
       cells={row.cells}
-      className={rowProps.className}
+      className={clsx(rowProps.className, {
+        active: highlightedItemId === row.id,
+      })}
       role={rowProps.role}
       style={rowProps.style}
     />
