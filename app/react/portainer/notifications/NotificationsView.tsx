@@ -39,11 +39,6 @@ export function NotificationsView() {
     params: { id: activeItemId },
   } = useCurrentStateAndParams();
 
-  const initialPage = getInitialPage(
-    activeItemId,
-    settings.pageSize,
-    userNotifications
-  );
   return (
     <>
       <PageHeader title="Notifications" breadcrumbs={breadcrumbs} reload />
@@ -63,9 +58,6 @@ export function NotificationsView() {
         onSortByChange={settings.setSortBy}
         searchValue={search}
         onSearchChange={setSearch}
-        initialTableState={{
-          pageIndex: initialPage,
-        }}
         getRowId={(row) => row.id}
         highlightedItemId={activeItemId}
       />
@@ -98,25 +90,3 @@ export const NotificationsViewAngular = react2angular(
   withUIRouter(withReactQuery(withCurrentUser(NotificationsView))),
   []
 );
-
-function getInitialPage<T extends { id: string }>(
-  activeItemId: string,
-  pageSize: number,
-  rows: Array<T>
-) {
-  const totalRows = rows.length;
-
-  if (!activeItemId || pageSize > totalRows) {
-    return 0;
-  }
-
-  const paginatedData = [...Array(Math.ceil(totalRows / pageSize))].map(
-    (_, i) => rows.slice(pageSize * i, pageSize + pageSize * i)
-  );
-
-  const itemPage = paginatedData.findIndex((sub) =>
-    sub.some((row) => row.id === activeItemId)
-  );
-
-  return itemPage;
-}

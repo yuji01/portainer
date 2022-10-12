@@ -26,6 +26,7 @@ import { DatatableFooter } from './DatatableFooter';
 import { DatatableContent } from './DatatableContent';
 import { defaultGetRowId } from './defaultGetRowId';
 import { emptyPlugin } from './emptyReactTablePlugin';
+import { useGoToHighlightedRow } from './useGoToHighlightedRow';
 
 export interface Props<D extends Record<string, unknown>> {
   dataset: D[];
@@ -93,6 +94,8 @@ export function Datatable<D extends Record<string, unknown>>({
   expandable = false,
   highlightedItemId,
 }: Props<D>) {
+  const isServerSidePagination = typeof pageCount !== 'undefined';
+
   const tableInstance = useTable<D>(
     {
       defaultCanFilter: false,
@@ -109,9 +112,7 @@ export function Datatable<D extends Record<string, unknown>>({
       autoResetExpanded: false,
       autoResetSelectedRows: false,
       getRowId,
-      ...(typeof pageCount !== 'undefined'
-        ? { manualPagination: true, pageCount }
-        : {}),
+      ...(isServerSidePagination ? { manualPagination: true, pageCount } : {}),
     },
     useFilters,
     useGlobalFilter,
@@ -120,6 +121,14 @@ export function Datatable<D extends Record<string, unknown>>({
     usePagination,
     useRowSelect,
     !disableSelect ? useRowSelectColumn : emptyPlugin
+  );
+
+  useGoToHighlightedRow(
+    isServerSidePagination,
+    tableInstance.state.pageSize,
+    tableInstance.rows,
+    handlePageChange,
+    highlightedItemId
   );
 
   const selectedItems = tableInstance.selectedFlatRows.map(
@@ -167,13 +176,13 @@ export function Datatable<D extends Record<string, unknown>>({
     onSearchChange(value);
   }
 
-  function handleSortChange(colId: string, desc: boolean) {
-    onSortByChange(colId, desc);
-  }
-
   function handlePageChange(page: number) {
     tableInstance.gotoPage(page);
     onPageChange(page);
+  }
+
+  function handleSortChange(colId: string, desc: boolean) {
+    onSortByChange(colId, desc);
   }
 
   function handlePageSizeChange(pageSize: number) {
