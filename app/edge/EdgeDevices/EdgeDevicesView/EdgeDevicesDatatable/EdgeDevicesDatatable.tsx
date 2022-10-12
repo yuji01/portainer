@@ -43,23 +43,24 @@ export function EdgeDevicesDatatable({
   groups,
 }: EdgeDevicesTableProps) {
   const settings = useStore(settingsStore);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
 
   const [search, setSearch] = useSearchBarState(storageKey);
 
   const hidableColumns = _.compact(
     columns.filter((col) => col.canHide).map((col) => col.id)
   );
+
   const { environments, isLoading, totalCount } = useEnvironmentList(
     {
       edgeDevice: true,
       search,
       types: EdgeTypes,
-      page,
+      excludeSnapshots: true,
+      page: page + 1,
       pageLimit: settings.pageSize,
       sort: settings.sortBy.id,
       order: settings.sortBy.desc ? 'desc' : 'asc',
-      excludeSnapshots: true,
     },
     settings.autoRefreshRate * 1000
   );
