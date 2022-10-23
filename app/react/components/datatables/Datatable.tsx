@@ -62,6 +62,7 @@ export interface Props<D extends Record<string, unknown>> {
     highlightedItemId?: string
   ): ReactNode;
   expandable?: boolean;
+  noWidget?: boolean;
 }
 
 export function Datatable<D extends Record<string, unknown>>({
@@ -93,6 +94,7 @@ export function Datatable<D extends Record<string, unknown>>({
   renderRow = defaultRenderRow,
   expandable = false,
   highlightedItemId,
+  noWidget,
 }: Props<D>) {
   const isServerSidePagination = typeof pageCount !== 'undefined';
 
@@ -136,39 +138,35 @@ export function Datatable<D extends Record<string, unknown>>({
   );
 
   return (
-    <div className="row">
-      <div className="col-sm-12">
-        <Table.Container>
-          <DatatableHeader
-            onSearchChange={handleSearchBarChange}
-            searchValue={searchValue}
-            title={title}
-            titleIcon={titleIcon}
-            renderTableActions={() => renderTableActions(selectedItems)}
-            renderTableSettings={() => renderTableSettings(tableInstance)}
-            description={description}
-          />
-          <DatatableContent<D>
-            tableInstance={tableInstance}
-            renderRow={(row, rowProps) =>
-              renderRow(row, rowProps, highlightedItemId)
-            }
-            emptyContentLabel={emptyContentLabel}
-            isLoading={isLoading}
-            onSortChange={handleSortChange}
-          />
+    <Table.Container noWidget={noWidget}>
+      <DatatableHeader
+        onSearchChange={handleSearchBarChange}
+        searchValue={searchValue}
+        title={title}
+        titleIcon={titleIcon}
+        renderTableActions={() => renderTableActions(selectedItems)}
+        renderTableSettings={() => renderTableSettings(tableInstance)}
+        description={description}
+      />
+      <DatatableContent<D>
+        tableInstance={tableInstance}
+        renderRow={(row, rowProps) =>
+          renderRow(row, rowProps, highlightedItemId)
+        }
+        emptyContentLabel={emptyContentLabel}
+        isLoading={isLoading}
+        onSortChange={handleSortChange}
+      />
 
-          <DatatableFooter
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-            page={tableInstance.state.pageIndex}
-            pageSize={tableInstance.state.pageSize}
-            totalCount={totalCount}
-            totalSelected={selectedItems.length}
-          />
-        </Table.Container>
-      </div>
-    </div>
+      <DatatableFooter
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+        page={tableInstance.state.pageIndex}
+        pageSize={tableInstance.state.pageSize}
+        totalCount={totalCount}
+        totalSelected={selectedItems.length}
+      />
+    </Table.Container>
   );
 
   function handleSearchBarChange(value: string) {
