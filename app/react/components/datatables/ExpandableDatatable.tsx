@@ -5,7 +5,7 @@ import { ExpandableDatatableTableRow } from './ExpandableDatatableRow';
 import { Datatable, Props as DatatableProps } from './Datatable';
 
 interface Props<D extends Record<string, unknown>>
-  extends Omit<DatatableProps<D>, 'renderRow'> {
+  extends Omit<DatatableProps<D>, 'renderRow' | 'expandable'> {
   renderSubRow(row: Row<D>): ReactNode;
 }
 
