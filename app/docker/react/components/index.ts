@@ -9,6 +9,7 @@ import { Gpu } from '@/react/docker/containers/CreateView/Gpu';
 import { withCurrentUser } from '@/react-tools/withCurrentUser';
 import { withReactQuery } from '@/react-tools/withReactQuery';
 import { withUIRouter } from '@/react-tools/withUIRouter';
+import { NetworksDatatable } from '@/react/docker/networks/ListView/NetworksDatatable';
 
 export const componentsModule = angular
   .module('portainer.docker.react.components', [])
@@ -31,6 +32,11 @@ export const componentsModule = angular
       ['environment', 'stackName']
     )
   )
+  .component('networksDatatable', r2a(withCurrentUser(NetworksDatatable), [
+    'dataset',
+    'onRefresh',
+    'onRemove'
+  ]))
   .component(
     'gpu',
     r2a(Gpu, ['values', 'onChange', 'gpus', 'usedGpus', 'usedAllGpus'])

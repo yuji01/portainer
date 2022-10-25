@@ -29,12 +29,13 @@ export function ExpandableDatatableTableRow<D extends Record<string, unknown>>({
         style={style}
       />
       {row.isExpanded && (
-        <tr>
-          {!disableSelect && <td />}
-          <td colSpan={disableSelect ? row.cells.length : row.cells.length - 1}>
-            {renderSubRow(row)}
-          </td>
-        </tr>
+        <>{renderSubRow(row)}</>
+        // <tr>
+        //   {!disableSelect && <td />}
+        //   <td colSpan={disableSelect ? row.cells.length : row.cells.length - 1}>
+        //     {renderSubRow(row)}
+        //   </td>
+        // </tr>
       )}
     </>
   );
