@@ -1,7 +1,7 @@
 import { ResourceControlViewModel } from '@/react/portainer/access-control/models/ResourceControlViewModel';
 import { AccessControlFormData } from '@/portainer/components/accessControlForm/porAccessControlFormModel';
-import { isBE } from '@/portainer/feature-flags/feature-flags.service';
 import { getFilePreview } from '@/react/portainer/gitops/gitops.service';
+import { isBE } from '@/react/portainer/feature-flags/feature-flags.service';
 import { getTemplateVariables, intersectVariables } from '@/react/portainer/custom-templates/components/utils';
 
 class KubeEditCustomTemplateViewController {
