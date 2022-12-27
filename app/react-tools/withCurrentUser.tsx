@@ -9,16 +9,15 @@ export function withCurrentUser<T>(
   const displayName =
     WrappedComponent.displayName || WrappedComponent.name || 'Component';
 
-  function WrapperComponent(props: T) {
+  function WrapperComponent(props: T & JSX.IntrinsicAttributes) {
     return (
       <UserProvider>
-        {/* eslint-disable-next-line react/jsx-props-no-spreading */}
         <WrappedComponent {...props} />
       </UserProvider>
     );
   }
 
-  WrapperComponent.displayName = displayName;
+  WrapperComponent.displayName = `withCurrentUser(${displayName})`;
 
   return WrapperComponent;
 }
