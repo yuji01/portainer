@@ -6,6 +6,7 @@ import { withReactQuery } from '@/react-tools/withReactQuery';
 import { withUIRouter } from '@/react-tools/withUIRouter';
 import { AnnotationsBeTeaser } from '@/react/kubernetes/annotations/AnnotationsBeTeaser';
 
+import { EnvironmentVariablesFieldset } from '@@/form-components/EnvironmentVariablesFieldset';
 import { Icon } from '@@/Icon';
 import { ReactQueryDevtoolsWrapper } from '@@/ReactQueryDevtoolsWrapper';
 import { PageHeader } from '@@/PageHeader';
@@ -195,4 +196,14 @@ export const componentsModule = angular
       'height',
     ])
   )
-  .component('annotationsBeTeaser', r2a(AnnotationsBeTeaser, [])).name;
+  .component('annotationsBeTeaser', r2a(AnnotationsBeTeaser, []))
+  .component(
+    'reactEnvironmentVariablesPanel',
+    r2a(EnvironmentVariablesFieldset, [
+      'explanation',
+      'onChange',
+      'showHelpMessage',
+      'value',
+      'errors',
+    ])
+  ).name;
