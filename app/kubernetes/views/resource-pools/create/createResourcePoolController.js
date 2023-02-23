@@ -151,7 +151,7 @@ class KubernetesCreateResourcePoolController {
   getResourcePools() {
     return this.$async(async () => {
       try {
-        this.resourcePools = await this.KubernetesResourcePoolService.get();
+        this.resourcePools = await this.KubernetesResourcePoolService.get('', { getQuota: true });
       } catch (err) {
         this.Notifications.error('Failure', err, 'Unable to retrieve namespaces');
       }
@@ -179,7 +179,7 @@ class KubernetesCreateResourcePoolController {
         this.defaults = KubernetesResourceQuotaDefaults;
         this.formValues = new KubernetesResourcePoolFormValues(this.defaults);
         this.formValues.EndpointId = this.endpoint.Id;
-        this.formValues.HasQuota = true;
+        this.formValues.HasQuota = false;
 
         this.state = {
           actionInProgress: false,

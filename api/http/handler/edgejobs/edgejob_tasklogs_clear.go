@@ -8,6 +8,8 @@ import (
 	"github.com/portainer/libhttp/request"
 	"github.com/portainer/libhttp/response"
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/internal/edge"
+	"github.com/portainer/portainer/api/internal/slices"
 )
 
 // @id EdgeJobTasksClear
@@ -43,18 +45,34 @@ func (handler *Handler) edgeJobTasksClear(w http.ResponseWriter, r *http.Request
 	}
 
 	endpointID := portainer.EndpointID(taskID)
+	endpointsFromGroups, err := edge.GetEndpointsFromEdgeGroups(edgeJob.EdgeGroups, handler.DataStore)
+	if err != nil {
+		return httperror.InternalServerError("Unable to get Endpoints from EdgeGroups", err)
+	}
 
-	meta := edgeJob.Endpoints[endpointID]
-	meta.CollectLogs = false
-	meta.LogsStatus = portainer.EdgeJobLogsStatusIdle
-	edgeJob.Endpoints[endpointID] = meta
+	if slices.Contains(endpointsFromGroups, endpointID) {
+		edgeJob.GroupLogsCollection[endpointID] = portainer.EdgeJobEndpointMeta{
+			CollectLogs: false,
+			LogsStatus:  portainer.EdgeJobLogsStatusIdle,
+		}
+	} else {
+		meta := edgeJob.Endpoints[endpointID]
+		meta.CollectLogs = false
+		meta.LogsStatus = portainer.EdgeJobLogsStatusIdle
+		edgeJob.Endpoints[endpointID] = meta
+	}
 
 	err = handler.FileService.ClearEdgeJobTaskLogs(strconv.Itoa(edgeJobID), strconv.Itoa(taskID))
 	if err != nil {
 		return httperror.InternalServerError("Unable to clear log file from disk", err)
 	}
 
-	handler.ReverseTunnelService.AddEdgeJob(endpointID, edgeJob)
+	endpoint, err := handler.DataStore.Endpoint().Endpoint(endpointID)
+	if err != nil {
+		return httperror.NotFound("Unable to retrieve environment from the database", err)
+	}
+
+	handler.ReverseTunnelService.AddEdgeJob(endpoint, edgeJob)
 
 	err = handler.DataStore.EdgeJob().UpdateEdgeJob(edgeJob.ID, edgeJob)
 	if err != nil {

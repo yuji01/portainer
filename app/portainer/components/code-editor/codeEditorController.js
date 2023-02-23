@@ -12,6 +12,10 @@ angular.module('portainer.app').controller('CodeEditorController', function Code
     if (value && value.currentValue && ctrl.editor.getValue() !== value.currentValue) {
       ctrl.editor.setValue(value.currentValue);
     }
+
+    if (ctrl.editor) {
+      ctrl.editor.setOption('readOnly', ctrl.readOnly);
+    }
   };
 
   this.$onInit = function () {

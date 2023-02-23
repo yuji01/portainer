@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import clsx from 'clsx';
 
 import { Select } from '@@/form-components/ReactSelect';
+import { TableHeaderSortIcons } from '@@/datatables/TableHeaderSortIcons';
 
 import { Filter } from './types';
 import styles from './SortbySelector.module.css';
@@ -24,42 +25,28 @@ export function SortbySelector({
   sortByButton,
   value,
 }: Props) {
-  const upIcon = 'fa fa-sort-alpha-up';
-  const downIcon = 'fa fa-sort-alpha-down';
-  const [iconStyle, setIconStyle] = useState(downIcon);
-
-  useEffect(() => {
-    if (sortByDescending) {
-      setIconStyle(upIcon);
-    } else {
-      setIconStyle(downIcon);
-    }
-  }, [sortByDescending]);
-
+  const sorted = sortByButton && !!value;
   return (
-    <div className={styles.sortByContainer}>
-      <div className={styles.sortByElement}>
-        <Select
-          placeholder={placeHolder}
-          options={filterOptions}
-          onChange={(option) => onChange(option as Filter)}
-          isClearable
-          value={value}
-        />
-      </div>
-      <div className={styles.sortByElement}>
-        <button
-          className={styles.sortButton}
-          type="button"
-          disabled={!sortByButton}
-          onClick={(e) => {
-            e.preventDefault();
-            onDescending();
-          }}
-        >
-          <i className={iconStyle} />
-        </button>
-      </div>
+    <div className="flex items-center justify-end gap-1">
+      <Select
+        placeholder={placeHolder}
+        options={filterOptions}
+        onChange={(option) => onChange(option as Filter)}
+        isClearable
+        value={value}
+      />
+
+      <button
+        className={clsx(styles.sortButton, '!m-0 h-[34px]')}
+        type="button"
+        disabled={!sorted}
+        onClick={(e) => {
+          e.preventDefault();
+          onDescending();
+        }}
+      >
+        <TableHeaderSortIcons sorted={sorted} descending={sortByDescending} />
+      </button>
     </div>
   );
 }

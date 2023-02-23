@@ -1,4 +1,4 @@
-import { Edit } from 'react-feather';
+import { Edit } from 'lucide-react';
 
 import Docker from '@/assets/ico/vendor/docker.svg?c';
 import Ecr from '@/assets/ico/vendor/ecr.svg?c';
@@ -48,8 +48,8 @@ export const options = [
   {
     id: 'registry_gitlab',
     icon: Gitlab,
-    label: 'Gitlab',
-    description: 'Gitlab container registry',
+    label: 'GitLab',
+    description: 'GitLab container registry',
     value: '4',
   },
   {

@@ -5,25 +5,33 @@
       <p> Pull the latest manifest from git and redeploy the application. </p>
     </div>
   </div>
-  <git-form-auto-update-fieldset model="$ctrl.formValues.AutoUpdate" on-change="($ctrl.onChangeAutoUpdate)"></git-form-auto-update-fieldset>
+  <git-form-auto-update-fieldset
+    value="$ctrl.formValues.AutoUpdate"
+    on-change="($ctrl.onChangeAutoUpdate)"
+    environment-type="KUBERNETES"
+    base-webhook-url="{{ $ctrl.state.baseWebhookUrl }}"
+  ></git-form-auto-update-fieldset>
+  <time-window-display></time-window-display>
+
   <div class="form-group">
     <div class="col-sm-12">
       <p>
         <a class="small interactive" ng-click="$ctrl.state.showConfig = !$ctrl.state.showConfig">
-          <i ng-class="['fa space-right', { 'fa-minus': $ctrl.state.showConfig, 'fa-plus': !$ctrl.state.showConfig }]" aria-hidden="true"></i>
+          <pr-icon ng-if="$ctrl.state.showConfig" icon="'minus'" class-name="'mr-1'"></pr-icon>
+          <pr-icon ng-if="!$ctrl.state.showConfig" icon="'plus'" class-name="'mr-1'"></pr-icon>
           {{ $ctrl.state.showConfig ? 'Hide' : 'Advanced' }} configuration
         </a>
       </p>
     </div>
   </div>
-  <git-form-ref-field ng-if="$ctrl.state.showConfig" value="$ctrl.formValues.RefName" on-change="($ctrl.onChangeRef)"></git-form-ref-field>
-  <git-form-auth-fieldset
+
+  <git-form-ref-field
     ng-if="$ctrl.state.showConfig"
+    value="$ctrl.formValues.RefName"
+    on-change="($ctrl.onChangeRef)"
     model="$ctrl.formValues"
-    is-edit="$ctrl.state.isEdit"
-    on-change="($ctrl.onChange)"
-    show-auth-explanation="true"
-  ></git-form-auth-fieldset>
+    is-url-valid="true"
+  ></git-form-ref-field>
 
   <div class="col-sm-12 form-section-title"> Actions </div>
   <!-- #Git buttons -->
@@ -37,7 +45,10 @@
     analytics-category="kubernetes"
     analytics-event="kubernetes-application-edit-git-pull"
   >
-    <span ng-show="!$ctrl.state.redeployInProgress"> <i class="fa fa-sync space-right" aria-hidden="true"></i> Pull and update application </span>
+    <span ng-show="!$ctrl.state.redeployInProgress">
+      <pr-icon icon="'refresh-cw'" class="!mr-1"></pr-icon>
+      Pull and update application
+    </span>
     <span ng-show="$ctrl.state.redeployInProgress">In progress...</span>
   </button>
   <button

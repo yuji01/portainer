@@ -1,8 +1,9 @@
 import { Form, Formik } from 'formik';
 import { useReducer } from 'react';
+import { Laptop } from 'lucide-react';
 
-import { EdgeCheckinIntervalField } from '@/edge/components/EdgeCheckInIntervalField';
-import { EdgeAsyncIntervalsForm } from '@/edge/components/EdgeAsyncIntervalsForm';
+import { EdgeCheckinIntervalField } from '@/react/edge/components/EdgeCheckInIntervalField';
+import { EdgeAsyncIntervalsForm } from '@/react/edge/components/EdgeAsyncIntervalsForm';
 import { notifySuccess } from '@/portainer/services/notifications';
 
 import { FormControl } from '@@/form-components/FormControl';
@@ -42,15 +43,20 @@ export function DeploymentSyncOptions() {
     return null;
   }
 
-  const initialValues = {
-    Edge: settingsQuery.data.Edge,
+  const initialValues: FormValues = {
+    Edge: {
+      AsyncMode: settingsQuery.data.Edge.AsyncMode,
+      CommandInterval: settingsQuery.data.Edge.CommandInterval,
+      PingInterval: settingsQuery.data.Edge.PingInterval,
+      SnapshotInterval: settingsQuery.data.Edge.SnapshotInterval,
+    },
     EdgeAgentCheckinInterval: settingsQuery.data.EdgeAgentCheckinInterval,
   };
 
   return (
     <div className="row">
       <Widget>
-        <WidgetTitle icon="svg-laptop" title="Deployment sync options" />
+        <WidgetTitle icon={Laptop} title="Deployment sync options" />
         <WidgetBody>
           <Formik<FormValues>
             initialValues={initialValues}
@@ -59,6 +65,18 @@ export function DeploymentSyncOptions() {
           >
             {({ errors, setFieldValue, values, isValid, dirty }) => (
               <Form className="form-horizontal">
+                <FormSection title="Check-in Intervals">
+                  <EdgeCheckinIntervalField
+                    value={values.EdgeAgentCheckinInterval}
+                    onChange={(value) =>
+                      setFieldValue('EdgeAgentCheckinInterval', value)
+                    }
+                    isDefaultHidden
+                    label="Edge agent default poll frequency"
+                    tooltip="Interval used by default by each Edge agent to check in with the Portainer instance. Affects Edge environment management and Edge compute features."
+                  />
+                </FormSection>
+
                 <FormControl
                   inputId="edge_async_mode"
                   label="Use Async mode by default"
@@ -81,18 +99,6 @@ export function DeploymentSyncOptions() {
                 <TextTip color="orange">
                   Enabling Async disables the tunnel function.
                 </TextTip>
-
-                <FormSection title="Check-in Intervals">
-                  <EdgeCheckinIntervalField
-                    value={values.EdgeAgentCheckinInterval}
-                    onChange={(value) =>
-                      setFieldValue('EdgeAgentCheckinInterval', value)
-                    }
-                    isDefaultHidden
-                    label="Edge agent default poll frequency"
-                    tooltip="Interval used by default by each Edge agent to check in with the Portainer instance. Affects Edge environment management and Edge compute features."
-                  />
-                </FormSection>
 
                 {values.Edge.AsyncMode && (
                   <FormSection title="Async Check-in Intervals">

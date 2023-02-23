@@ -1,6 +1,7 @@
 import { array, object, string } from 'yup';
 
 import { r2a } from '@/react-tools/react2angular';
+import { withControlledInput } from '@/react-tools/withControlledInput';
 
 import { InputList } from '@@/form-components/InputList';
 import { ItemProps } from '@@/form-components/InputList/InputList';
@@ -18,7 +19,7 @@ interface Props {
 
 function Item({ item, onChange }: ItemProps<Gpu>) {
   return (
-    <div className="flex gap-2 flex-grow">
+    <div className="flex flex-grow gap-2">
       <InputGroup size="small" className="flex-grow">
         <InputGroup.Addon>GPU Name</InputGroup.Addon>
         <InputGroup.Input
@@ -65,4 +66,7 @@ export function gpusListValidation() {
   return array().of(gpuShape).default([]);
 }
 
-export const GpusListAngular = r2a(GpusList, ['value', 'onChange']);
+export const GpusListAngular = r2a(withControlledInput(GpusList), [
+  'value',
+  'onChange',
+]);

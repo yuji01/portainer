@@ -1,7 +1,6 @@
 import _ from 'lodash-es';
-import DockerNetworkHelper from 'Docker/helpers/networkHelper';
-import { isOfflineEndpoint } from '@/portainer/helpers/endpointHelper';
-import { confirmDeletionAsync } from 'Portainer/services/modal.service/confirm';
+import DockerNetworkHelper from '@/docker/helpers/networkHelper';
+import { confirmDelete } from '@@/modals/confirm';
 
 angular.module('portainer.docker').controller('NetworksController', [
   '$q',
@@ -14,7 +13,7 @@ angular.module('portainer.docker').controller('NetworksController', [
   'AgentService',
   function ($q, $scope, $state, NetworkService, Notifications, HttpRequestHelper, endpoint, AgentService) {
     $scope.removeAction = async function (selectedItems) {
-      const confirmed = await confirmDeletionAsync('Do you want to remove the selected network(s)?');
+      const confirmed = await confirmDelete('Do you want to remove the selected network(s)?');
       if (!confirmed) {
         return null;
       }
@@ -38,8 +37,6 @@ angular.module('portainer.docker').controller('NetworksController', [
           });
       });
     };
-
-    $scope.offlineMode = false;
 
     $scope.getNetworks = getNetworks;
 
@@ -71,7 +68,6 @@ angular.module('portainer.docker').controller('NetworksController', [
 
       $q.all(req)
         .then((data) => {
-          $scope.offlineMode = isOfflineEndpoint(endpoint);
           const networks = _.forEach(data.networks, (item) => (item.Subs = []));
           if ($scope.applicationState.endpoint.mode.agentProxy && $scope.applicationState.endpoint.mode.provider === 'DOCKER_SWARM_MODE') {
             $scope.networks = groupSwarmNetworksManagerNodesFirst(data.networks, data.agents);

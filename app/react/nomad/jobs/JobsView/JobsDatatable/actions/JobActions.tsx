@@ -1,9 +1,10 @@
 import { useMutation } from 'react-query';
+import { Trash2 } from 'lucide-react';
 
 import { useEnvironmentId } from '@/react/hooks/useEnvironmentId';
 import { Job } from '@/react/nomad/types';
-import { confirmDeletionAsync } from '@/portainer/services/modal.service/confirm';
 
+import { confirmDelete } from '@@/modals/confirm';
 import { LoadingButton } from '@@/buttons/LoadingButton';
 
 import { deleteJobs } from './delete';
@@ -25,14 +26,14 @@ export function JobActions({ selectedItems, refreshData }: Props) {
       disabled={selectedItems.length < 1 || mutation.isLoading}
       color="danger"
       onClick={handleDeleteClicked}
+      icon={Trash2}
     >
-      <i className="fa fa-trash-alt space-right" aria-hidden="true" />
       Remove
     </LoadingButton>
   );
 
   async function handleDeleteClicked() {
-    const confirmed = await confirmDeletionAsync(
+    const confirmed = await confirmDelete(
       'Are you sure to delete all selected jobs?'
     );
 

@@ -1,4 +1,5 @@
 import { CellProps, Column } from 'react-table';
+import { AlertTriangle, ArrowRight } from 'lucide-react';
 
 import { Icon } from '@@/Icon';
 import { Badge } from '@@/Badge';
@@ -32,13 +33,13 @@ export const ingressRules: Column<Ingress> = {
       const isHttp = isHTTP(row.original.TLS || [], path.Host);
       return (
         <div key={`${path.Host}${path.Path}${path.ServiceName}:${path.Port}`}>
-          <span className="flex px-2 flex-nowrap items-center gap-1">
+          <span className="flex flex-nowrap items-center gap-1 px-2">
             {link(path.Host, path.Path, isHttp)}
-            <Icon icon="arrow-right" feather />
+            <Icon icon={ArrowRight} />
             {`${path.ServiceName}:${path.Port}`}
             {!path.HasService && (
               <Badge type="warn" className="ml-1 gap-1">
-                <Icon icon="alert-triangle" feather />
+                <Icon icon={AlertTriangle} />
                 Service doesn&apos;t exist
               </Badge>
             )}

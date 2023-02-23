@@ -3,19 +3,14 @@ import _ from 'lodash';
 import { useSref } from '@uirouter/react';
 
 import type { DockerContainer } from '@/react/docker/containers/types';
-import { isOfflineEndpoint } from '@/portainer/helpers/endpointHelper';
 
-import { useTableSettings } from '@@/datatables/useZustandTableSettings';
+import { useTableSettings } from '@@/datatables/useTableSettings';
 
 import { TableSettings } from '../types';
-import { useRowContext } from '../RowContext';
 
 export const name: Column<DockerContainer> = {
   Header: 'Name',
-  accessor: (row) => {
-    const name = row.Names[0];
-    return name.substring(1, name.length);
-  },
+  accessor: (row) => row.Names[0],
   id: 'name',
   Cell: NameCell,
   disableFilters: true,
@@ -33,18 +28,12 @@ export function NameCell({
     nodeName: container.NodeName,
   });
 
-  const { settings } = useTableSettings<TableSettings>();
+  const settings = useTableSettings<TableSettings>();
   const truncate = settings.truncateContainerName;
-
-  const { environment } = useRowContext();
 
   let shortName = name;
   if (truncate > 0) {
     shortName = _.truncate(name, { length: truncate });
-  }
-
-  if (isOfflineEndpoint(environment)) {
-    return <span>{shortName}</span>;
   }
 
   return (

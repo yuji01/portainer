@@ -1,7 +1,8 @@
 import { ChangeEvent, ReactNode } from 'react';
+import { Trash2 } from 'lucide-react';
 
-import { Icon } from '@@/Icon';
 import { FormError } from '@@/form-components/FormError';
+import { Button } from '@@/buttons';
 
 import { Annotation } from './types';
 
@@ -28,7 +29,7 @@ export function Annotations({
     <>
       {annotations.map((annotation, i) => (
         <div className="row" key={annotation.ID}>
-          <div className="form-group !pl-0 col-sm-4 !m-0">
+          <div className="form-group col-sm-4 !m-0 !pl-0">
             <div className="input-group input-group-sm">
               <span className="input-group-addon required">Key</span>
               <input
@@ -48,7 +49,7 @@ export function Annotations({
               </FormError>
             )}
           </div>
-          <div className="form-group !pl-0 col-sm-4 !m-0">
+          <div className="form-group col-sm-4 !m-0 !pl-0">
             <div className="input-group input-group-sm">
               <span className="input-group-addon required">Value</span>
               <input
@@ -68,14 +69,15 @@ export function Annotations({
               </FormError>
             )}
           </div>
-          <div className="col-sm-3 !pl-0 !m-0">
-            <button
-              className="btn btn-sm btn-dangerlight btn-only-icon !ml-0"
+          <div className="col-sm-3 !m-0 !pl-0">
+            <Button
+              size="small"
+              color="dangerlight"
+              className="btn-only-icon !ml-0"
               type="button"
               onClick={() => removeAnnotation(i)}
-            >
-              <Icon icon="trash-2" size="md" feather />
-            </button>
+              icon={Trash2}
+            />
           </div>
         </div>
       ))}

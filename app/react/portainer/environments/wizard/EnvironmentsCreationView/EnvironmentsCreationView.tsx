@@ -2,6 +2,7 @@ import { useCurrentStateAndParams, useRouter } from '@uirouter/react';
 import { useState } from 'react';
 import _ from 'lodash';
 import clsx from 'clsx';
+import { ArrowLeft, ArrowRight, Wand2 } from 'lucide-react';
 
 import { notifyError } from '@/portainer/services/notifications';
 import {
@@ -17,7 +18,10 @@ import { Button } from '@@/buttons';
 import { FormSection } from '@@/form-components/FormSection';
 import { Icon } from '@@/Icon';
 
-import { environmentTypes } from '../EnvironmentTypeSelectView/environment-types';
+import {
+  environmentTypes,
+  formTitles,
+} from '../EnvironmentTypeSelectView/environment-types';
 import { EnvironmentSelectorValue } from '../EnvironmentTypeSelectView/EnvironmentSelector';
 
 import { WizardDocker } from './WizardDocker';
@@ -71,15 +75,12 @@ export function EnvironmentCreationView() {
 
       <div className={styles.wizardWrapper}>
         <Widget>
-          <WidgetTitle icon="svg-magic" title="Environment Wizard" />
+          <WidgetTitle icon={Wand2} title="Environment Wizard" />
           <WidgetBody>
             <Stepper steps={steps} currentStep={currentStepIndex + 1} />
 
             <div className="mt-12">
-              <FormSection
-                title={`Connect to your ${currentStep.title}
-                    environment`}
-              >
+              <FormSection title={formTitles[currentStep.id]}>
                 <Component
                   onCreate={handleCreateEnvironment}
                   isDockerStandalone={isDockerStandalone}
@@ -92,11 +93,11 @@ export function EnvironmentCreationView() {
                   )}
                 >
                   <Button disabled={isFirstStep} onClick={onPreviousClick}>
-                    <Icon icon="arrow-left" feather /> Previous
+                    <Icon icon={ArrowLeft} /> Previous
                   </Button>
                   <Button onClick={onNextClick}>
                     {isLastStep ? 'Close' : 'Next'}
-                    <Icon icon="arrow-right" feather />
+                    <Icon icon={ArrowRight} />
                   </Button>
                 </div>
               </FormSection>

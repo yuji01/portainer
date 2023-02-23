@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download } from 'react-feather';
+import { Download } from 'lucide-react';
 
 import { Environment } from '@/react/portainer/environments/types';
 import { isKubernetesEnvironment } from '@/react/portainer/environments/utils';
@@ -19,18 +19,24 @@ export interface Props {
 export function KubeconfigButton({ environments, envQueryParams }: Props) {
   const [isOpen, setIsOpen] = useState(false);
 
-  if (!environments) {
-    return null;
-  }
+  const kubeEnvs = environments.filter((env) =>
+    isKubernetesEnvironment(env.Type)
+  );
 
-  if (!isKubeconfigButtonVisible(environments)) {
+  if (!isKubeconfigButtonVisible()) {
     return null;
   }
 
   return (
     <>
-      <Button onClick={handleClick} size="medium" className="!ml-3">
-        <Download className="feather icon-white" aria-hidden="true" />{' '}
+      <Button
+        onClick={handleClick}
+        size="medium"
+        className="!m-0"
+        icon={Download}
+        disabled={kubeEnvs.length === 0}
+        color="light"
+      >
         Kubeconfig
       </Button>
       {prompt()}
@@ -53,11 +59,8 @@ export function KubeconfigButton({ environments, envQueryParams }: Props) {
     setIsOpen(false);
   }
 
-  function isKubeconfigButtonVisible(environments: Environment[]) {
-    if (window.location.protocol !== 'https:') {
-      return false;
-    }
-    return environments.some((env) => isKubernetesEnvironment(env.Type));
+  function isKubeconfigButtonVisible() {
+    return window.location.protocol === 'https:';
   }
 
   function prompt() {
@@ -66,6 +69,7 @@ export function KubeconfigButton({ environments, envQueryParams }: Props) {
         <KubeconfigPrompt
           envQueryParams={envQueryParams}
           onClose={handleClose}
+          selectedItems={kubeEnvs.map((env) => env.Id)}
         />
       )
     );

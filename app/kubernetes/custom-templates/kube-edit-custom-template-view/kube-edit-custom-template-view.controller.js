@@ -3,11 +3,12 @@ import { AccessControlFormData } from '@/portainer/components/accessControlForm/
 import { getFilePreview } from '@/react/portainer/gitops/gitops.service';
 import { isBE } from '@/react/portainer/feature-flags/feature-flags.service';
 import { getTemplateVariables, intersectVariables } from '@/react/portainer/custom-templates/components/utils';
+import { confirmWebEditorDiscard } from '@@/modals/confirm';
 
 class KubeEditCustomTemplateViewController {
   /* @ngInject */
-  constructor($async, $state, ModalService, Authentication, CustomTemplateService, FormValidator, Notifications, ResourceControlService, UserService) {
-    Object.assign(this, { $async, $state, ModalService, Authentication, CustomTemplateService, FormValidator, Notifications, ResourceControlService, UserService });
+  constructor($async, $state, Authentication, CustomTemplateService, FormValidator, Notifications, ResourceControlService, UserService) {
+    Object.assign(this, { $async, $state, Authentication, CustomTemplateService, FormValidator, Notifications, ResourceControlService, UserService });
 
     this.isTemplateVariablesEnabled = isBE;
 
@@ -231,7 +232,7 @@ class KubeEditCustomTemplateViewController {
 
   uiCanExit() {
     if (this.isEditorDirty()) {
-      return this.ModalService.confirmWebEditorDiscard();
+      return confirmWebEditorDiscard();
     }
   }
 

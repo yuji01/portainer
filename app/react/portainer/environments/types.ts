@@ -1,5 +1,7 @@
 import { TagId } from '@/portainer/tags/types';
 import { EnvironmentGroupId } from '@/react/portainer/environments/environment-groups/types';
+import { Job } from '@/react/nomad/types';
+import { DockerSnapshot } from '@/react/docker/snapshots/types';
 
 export type EnvironmentId = number;
 
@@ -25,30 +27,14 @@ export enum EnvironmentType {
 export const EdgeTypes = [
   EnvironmentType.EdgeAgentOnDocker,
   EnvironmentType.EdgeAgentOnKubernetes,
+  EnvironmentType.EdgeAgentOnNomad,
 ] as const;
 
 export enum EnvironmentStatus {
   Up = 1,
   Down,
-}
-
-export interface DockerSnapshot {
-  TotalCPU: number;
-  TotalMemory: number;
-  NodeCount: number;
-  ImageCount: number;
-  VolumeCount: number;
-  RunningContainerCount: number;
-  StoppedContainerCount: number;
-  HealthyContainerCount: number;
-  UnhealthyContainerCount: number;
-  Time: number;
-  StackCount: number;
-  ServiceCount: number;
-  Swarm: boolean;
-  DockerVersion: string;
-  GpuUseAll: boolean;
-  GpuUseList: string[];
+  Provisioning,
+  Error,
 }
 
 export interface KubernetesSnapshot {
@@ -80,6 +66,20 @@ export interface KubernetesSettings {
   Configuration: KubernetesConfiguration;
 }
 
+export interface NomadSnapshot {
+  JobCount: number;
+  GroupCount: number;
+  TaskCount: number;
+  RunningTaskCount: number;
+  NodeCount: number;
+  Time: number;
+  Jobs: Job[];
+}
+
+export interface NomadSettings {
+  Snapshots: NomadSnapshot[];
+}
+
 export type EnvironmentEdge = {
   AsyncMode: boolean;
   PingInterval: number;
@@ -108,12 +108,29 @@ export interface EnvironmentSecuritySettings {
   enableHostManagementFeatures: boolean;
 }
 
+export type DeploymentOptions = {
+  overrideGlobalOptions: boolean;
+  hideAddWithForm: boolean;
+  hideWebEditor: boolean;
+  hideFileUpload: boolean;
+};
+
+/**
+ *  EndpointChangeWindow determine when automatic stack/app updates may occur
+ */
+interface EndpointChangeWindow {
+  Enabled: boolean;
+  StartTime: string;
+  EndTime: string;
+}
+
 export type Environment = {
   Agent: { Version: string };
   Id: EnvironmentId;
   Type: EnvironmentType;
   TagIds: TagId[];
   GroupId: EnvironmentGroupId;
+  DeploymentOptions: DeploymentOptions | null;
   EdgeID?: string;
   EdgeKey: string;
   EdgeCheckinInterval?: number;
@@ -124,6 +141,7 @@ export type Environment = {
   URL: string;
   Snapshots: DockerSnapshot[];
   Kubernetes: KubernetesSettings;
+  Nomad: NomadSettings;
   PublicURL?: string;
   IsEdgeDevice?: boolean;
   UserTrusted: boolean;
@@ -131,6 +149,11 @@ export type Environment = {
   Edge: EnvironmentEdge;
   SecuritySettings: EnvironmentSecuritySettings;
   Gpus: { name: string; value: string }[];
+  EnableImageNotification: boolean;
+  LocalTimeZone?: string;
+
+  /** Automatic update change window restriction for stacks and apps */
+  ChangeWindow: EndpointChangeWindow;
 };
 
 /**

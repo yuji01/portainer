@@ -11,6 +11,7 @@ import servicesModule from './services';
 import { reactModule } from './react';
 import { sidebarModule } from './react/views/sidebar';
 import environmentsModule from './environments';
+import { helpersModule } from './helpers';
 
 async function initAuthentication(authManager, Authentication, $rootScope, $state) {
   authManager.checkAuthOnRefresh();
@@ -41,6 +42,7 @@ angular
     reactModule,
     sidebarModule,
     environmentsModule,
+    helpersModule,
   ])
   .config([
     '$stateRegistryProvider',
@@ -175,7 +177,10 @@ angular
 
       var endpoint = {
         name: 'portainer.endpoints.endpoint',
-        url: '/:id',
+        url: '/:id?redirectTo',
+        params: {
+          redirectTo: '',
+        },
         views: {
           'content@': {
             templateUrl: './views/endpoints/edit/endpoint.html',
@@ -298,18 +303,6 @@ angular
         url: '/init',
         views: {
           'sidebar@': {},
-        },
-      };
-
-      var initEndpoint = {
-        name: 'portainer.init.endpoint',
-        url: '/endpoint',
-        views: {
-          'content@': {
-            templateUrl: './views/init/endpoint/initEndpoint.html',
-            controller: 'InitEndpointController',
-            controllerAs: 'ctrl',
-          },
         },
       };
 
@@ -440,7 +433,6 @@ angular
       $stateRegistryProvider.register(groupCreation);
       $stateRegistryProvider.register(home);
       $stateRegistryProvider.register(init);
-      $stateRegistryProvider.register(initEndpoint);
       $stateRegistryProvider.register(initAdmin);
       $stateRegistryProvider.register(registries);
       $stateRegistryProvider.register(registry);

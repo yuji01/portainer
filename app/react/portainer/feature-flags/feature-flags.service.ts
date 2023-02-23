@@ -28,6 +28,7 @@ export async function init(edition: Edition) {
     [FeatureId.RBAC_ROLES]: Edition.BE,
     [FeatureId.REGISTRY_MANAGEMENT]: Edition.BE,
     [FeatureId.S3_BACKUP_SETTING]: Edition.BE,
+    [FeatureId.S3_RESTORE]: Edition.BE,
     [FeatureId.TEAM_MEMBERSHIP]: Edition.BE,
     [FeatureId.FORCE_REDEPLOYMENT]: Edition.BE,
     [FeatureId.HIDE_AUTO_UPDATE_WINDOW]: Edition.BE,
@@ -37,6 +38,10 @@ export async function init(edition: Edition) {
     [FeatureId.POD_SECURITY_POLICY_CONSTRAINT]: Edition.BE,
     [FeatureId.HIDE_DOCKER_HUB_ANONYMOUS]: Edition.BE,
     [FeatureId.CUSTOM_LOGIN_BANNER]: Edition.BE,
+    [FeatureId.K8S_EDIT_YAML]: Edition.BE,
+    [FeatureId.ENFORCE_DEPLOYMENT_OPTIONS]: Edition.BE,
+    [FeatureId.K8S_ADM_ONLY_USR_INGRESS_DEPLY]: Edition.BE,
+    [FeatureId.K8S_ROLLING_RESTART]: Edition.BE,
   };
 
   state.currentEdition = currentEdition;

@@ -1,10 +1,8 @@
-import clsx from 'clsx';
 import _ from 'lodash';
-import { Edit2, Tag, Cpu } from 'react-feather';
+import { Tag, Activity } from 'lucide-react';
 
 import {
   isoDateFromTimestamp,
-  humanize,
   stripProtocol,
 } from '@/portainer/filters/filters';
 import {
@@ -12,142 +10,121 @@ import {
   PlatformType,
 } from '@/react/portainer/environments/types';
 import {
+  getDashboardRoute,
   getPlatformType,
-  isDockerEnvironment,
   isEdgeEnvironment,
 } from '@/react/portainer/environments/utils';
 import type { TagId } from '@/portainer/tags/types';
 import { useTags } from '@/portainer/tags/queries';
-import { useUser } from '@/react/hooks/useUser';
 
-import { Icon } from '@@/Icon';
-import { Link } from '@@/Link';
-import { Button } from '@@/buttons';
 import { EdgeIndicator } from '@@/EdgeIndicator';
+import { EnvironmentStatusBadge } from '@@/EnvironmentStatusBadge';
+import { Link } from '@@/Link';
 
 import { EnvironmentIcon } from './EnvironmentIcon';
 import { EnvironmentStats } from './EnvironmentStats';
-import styles from './EnvironmentItem.module.css';
-import { EnvironmentStatusBadge } from './EnvironmentStatusBadge';
+import { EngineVersion } from './EngineVersion';
+import { EnvironmentTypeTag } from './EnvironmentTypeTag';
+import { EnvironmentBrowseButtons } from './EnvironmentBrowseButtons';
+import { EditButtons } from './EditButtons';
+import { AgentDetails } from './AgentDetails';
 
 interface Props {
   environment: Environment;
   groupName?: string;
-  onClick(environment: Environment): void;
+  onClickBrowse(): void;
+  onClickDisconnect(): void;
+  isActive: boolean;
 }
 
-export function EnvironmentItem({ environment, onClick, groupName }: Props) {
-  const { isAdmin } = useUser();
+export function EnvironmentItem({
+  environment,
+  onClickBrowse,
+  onClickDisconnect,
+  groupName,
+  isActive,
+}: Props) {
   const isEdge = isEdgeEnvironment(environment.Type);
 
   const snapshotTime = getSnapshotTime(environment);
 
   const tags = useEnvironmentTagNames(environment.TagIds);
-  const route = getRoute(environment);
+  const dashboardRoute = getDashboardRoute(environment);
 
   return (
-    <div className={styles.root}>
-      <button
-        type="button"
-        onClick={() => onClick(environment)}
-        className={styles.wrapperButton}
+    <div className="relative">
+      <Link
+        to={dashboardRoute.to}
+        params={dashboardRoute.params}
+        className="no-link"
       >
-        <Link
-          className={clsx('blocklist-item no-link', styles.item)}
-          to={route}
-          params={{
-            endpointId: environment.Id,
-            id: environment.Id,
-          }}
+        <button
+          className="blocklist-item !m-0 flex min-h-[110px] w-full items-stretch overflow-hidden bg-transparent !pr-56"
+          onClick={onClickBrowse}
+          type="button"
         >
-          <div className="blocklist-item-box">
-            <span className={clsx('blocklist-item-logo', 'endpoint-item')}>
-              <EnvironmentIcon type={environment.Type} />
-            </span>
-            <span className="col-sm-12">
-              <div className="blocklist-item-line endpoint-item">
-                <span>
-                  <span className="blocklist-item-title endpoint-item">
-                    {environment.Name}
-                  </span>
-                  <span className="space-left blocklist-item-subtitle">
-                    {isEdge ? (
-                      <EdgeIndicator
-                        environment={environment}
-                        showLastCheckInDate
-                      />
-                    ) : (
-                      <>
-                        <EnvironmentStatusBadge status={environment.Status} />
-                        <span className="space-left small text-muted">
-                          {snapshotTime}
-                        </span>
-                      </>
-                    )}
-                  </span>
-                </span>
-                {groupName && (
-                  <span className="small space-right">
-                    <span>Group: </span>
-                    <span>{groupName}</span>
-                  </span>
-                )}
-              </div>
-              <EnvironmentStats environment={environment} />
-              <div className="blocklist-item-line endpoint-item">
-                <span className="small text-muted space-x-2">
-                  {isDockerEnvironment(environment.Type) && (
-                    <span>
-                      {environment.Snapshots.length > 0 && (
-                        <span className="small text-muted vertical-center">
-                          <Cpu
-                            className="icon icon-sm space-right"
-                            aria-hidden="true"
-                          />
-                          {environment.Snapshots[0].TotalCPU} CPU
-                          <Icon
-                            icon="svg-memory"
-                            className="icon icon-sm space-right"
-                          />
-                          {humanize(environment.Snapshots[0].TotalMemory)} RAM
-                          <Cpu
-                            className="icon icon-sm space-right"
-                            aria-hidden="true"
-                          />
-                          {environment.Gpus?.length} GPU
-                        </span>
-                      )}
+          <div className="ml-2 flex justify-center self-center">
+            <EnvironmentIcon type={environment.Type} />
+          </div>
+          <div className="ml-3 mr-auto flex flex-col items-start justify-center gap-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="font-bold">{environment.Name}</span>
+              {isEdge ? (
+                <EdgeIndicator environment={environment} showLastCheckInDate />
+              ) : (
+                <>
+                  <EnvironmentStatusBadge status={environment.Status} />
+                  {snapshotTime && (
+                    <span
+                      className="small text-muted vertical-center gap-1"
+                      title="Last snapshot time"
+                    >
+                      <Activity className="icon icon-sm" aria-hidden="true" />
+                      {snapshotTime}
                     </span>
                   )}
-                  <span className="vertical-center">
-                    <Tag
-                      className="icon icon-sm space-right"
-                      aria-hidden="true"
-                    />
-                    {tags}
-                  </span>
+                </>
+              )}
+              <EngineVersion environment={environment} />
+              {!isEdge && (
+                <span className="text-muted small vertical-center">
+                  {stripProtocol(environment.URL)}
                 </span>
-                {!isEdge && (
-                  <span className="small text-muted">
-                    {stripProtocol(environment.URL)}
-                  </span>
-                )}
-              </div>
-            </span>
+              )}
+            </div>
+            <div className="small text-muted flex flex-wrap items-center gap-x-4 gap-y-2">
+              {groupName && (
+                <span className="font-semibold">
+                  <span>Group: </span>
+                  <span>{groupName}</span>
+                </span>
+              )}
+              <span className="vertical-center gap-1">
+                <Tag className="icon icon-sm" aria-hidden="true" />
+                {tags}
+              </span>
+              <EnvironmentTypeTag environment={environment} />
+              <AgentDetails environment={environment} />
+            </div>
+            <EnvironmentStats environment={environment} />
           </div>
-        </Link>
-      </button>
-      {isAdmin && (
-        <Link
-          to="portainer.endpoints.endpoint"
-          params={{ id: environment.Id }}
-          className={styles.editButton}
-        >
-          <Button color="link">
-            <Edit2 className="icon icon-md" aria-hidden="true" />
-          </Button>
-        </Link>
-      )}
+        </button>
+      </Link>
+      {/* 
+      Buttons are extracted out of the main button because it causes errors with react and accessibility issues
+      see https://stackoverflow.com/questions/66409964/warning-validatedomnesting-a-cannot-appear-as-a-descendant-of-a
+      */}
+      <div className="absolute inset-y-0 right-0 flex w-56 justify-end">
+        <div className="flex flex-1 items-center py-3">
+          <EnvironmentBrowseButtons
+            environment={environment}
+            onClickBrowse={onClickBrowse}
+            onClickDisconnect={onClickDisconnect}
+            isActive={isActive}
+          />
+        </div>
+        <EditButtons environment={environment} />
+      </div>
     </div>
   );
 }
@@ -190,24 +167,5 @@ function getSnapshotTime(environment: Environment) {
         : null;
     default:
       return null;
-  }
-}
-
-function getRoute(environment: Environment) {
-  if (isEdgeEnvironment(environment.Type) && !environment.EdgeID) {
-    return 'portainer.endpoints.endpoint';
-  }
-
-  const platform = getPlatformType(environment.Type);
-
-  switch (platform) {
-    case PlatformType.Azure:
-      return 'azure.dashboard';
-    case PlatformType.Docker:
-      return 'docker.dashboard';
-    case PlatformType.Kubernetes:
-      return 'kubernetes.dashboard';
-    default:
-      return '';
   }
 }
