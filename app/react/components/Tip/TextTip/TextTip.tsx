@@ -4,7 +4,7 @@ import clsx from 'clsx';
 
 import { Icon, IconMode } from '@@/Icon';
 
-type Color = 'orange' | 'blue';
+type Color = 'orange' | 'blue' | 'red' | 'green';
 
 export interface Props {
   icon?: React.ReactNode;
@@ -19,8 +19,8 @@ export function TextTip({
   children,
 }: PropsWithChildren<Props>) {
   return (
-    <div className={clsx('small inline-flex items-center gap-1', className)}>
-      <Icon icon={icon} mode={getMode(color)} className="shrink-0" />
+    <div className={clsx('small inline-flex gap-1', className)}>
+      <Icon icon={icon} mode={getMode(color)} className="!mt-[2px]" />
       <span className="text-muted">{children}</span>
     </div>
   );
@@ -30,6 +30,10 @@ function getMode(color: Color): IconMode {
   switch (color) {
     case 'blue':
       return 'primary';
+    case 'red':
+      return 'danger';
+    case 'green':
+      return 'success';
     case 'orange':
     default:
       return 'warning';
