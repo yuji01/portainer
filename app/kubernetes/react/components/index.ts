@@ -8,6 +8,9 @@ import { NamespaceAccessUsersSelector } from '@/react/kubernetes/namespaces/Acce
 import { CreateNamespaceRegistriesSelector } from '@/react/kubernetes/namespaces/CreateView/CreateNamespaceRegistriesSelector';
 import { KubeApplicationAccessPolicySelector } from '@/react/kubernetes/applications/CreateView/KubeApplicationAccessPolicySelector';
 import { KubeApplicationDeploymentTypeSelector } from '@/react/kubernetes/applications/CreateView/KubeApplicationDeploymentTypeSelector';
+import { withUIRouter } from '@/react-tools/withUIRouter';
+import { withCurrentUser } from '@/react-tools/withCurrentUser';
+import { ApplicationsStacksDatatable } from '@/react/kubernetes/applications/ListView/ApplicationsStacksDatatable';
 
 export const componentsModule = angular
   .module('portainer.kubernetes.react.components', [])
@@ -81,5 +84,16 @@ export const componentsModule = angular
       'value',
       'onChange',
       'supportGlobalDeployment',
+    ])
+  )
+  .component(
+    'reactKubernetesApplicationsStacksDatatable',
+    r2a(withUIRouter(withCurrentUser(ApplicationsStacksDatatable)), [
+      'dataset',
+      'onRefresh',
+      'onRemove',
+      'namespace',
+      'namespaces',
+      'onNamespaceChange',
     ])
   ).name;

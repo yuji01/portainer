@@ -188,9 +188,11 @@ class KubernetesApplicationsController {
       isSystemResources: undefined,
     };
 
-    this.state.namespaces = await this.KubernetesNamespaceService.get();
-    this.state.namespaces = this.state.namespaces.filter((n) => n.Status !== 'Terminating');
-    this.state.namespaces = _.sortBy(this.state.namespaces, 'Name');
+    const namespaces = await this.KubernetesNamespaceService.get();
+    this.state.namespaces = _.sortBy(
+      namespaces.filter((n) => n.Status !== 'Terminating'),
+      'Name'
+    );
     this.state.namespace = this.state.namespaces.length ? (this.state.namespaces.find((n) => n.Name === 'default') ? 'default' : this.state.namespaces[0].Name) : '';
 
     await this.getApplications();
