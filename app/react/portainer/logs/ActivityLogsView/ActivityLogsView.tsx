@@ -17,7 +17,7 @@ export function ActivityLogsView() {
     { start: Date; end: Date | null } | undefined
   >(undefined);
   const [page, setPage] = useState(0);
-  const tableState = useTableStateWithoutStorage('Timestamp');
+  const tableState = useTableStateWithoutStorage('Timestamp', true);
   const offset = page * tableState.pageSize;
 
   const query = {
