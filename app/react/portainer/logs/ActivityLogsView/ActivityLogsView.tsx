@@ -24,7 +24,7 @@ export function ActivityLogsView() {
     offset,
     limit: tableState.pageSize,
     sortBy: getSortType(tableState.sortBy?.id),
-    desc: tableState.sortBy?.desc,
+    sortDesc: tableState.sortBy?.desc,
     search: tableState.search,
     ...(range
       ? {
