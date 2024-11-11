@@ -1375,6 +1375,7 @@ type (
 		//
 		// When this is set, docker compose will output its logs to stdout
 		AbortOnContainerExit bool
+		Prune                bool
 	}
 
 	ComposeRunOptions struct {
