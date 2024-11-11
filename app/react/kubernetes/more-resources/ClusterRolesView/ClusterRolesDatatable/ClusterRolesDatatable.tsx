@@ -23,7 +23,7 @@ import { RoleBinding } from '../../RolesView/RoleBindingsDatatable/types';
 import { ClusterRole, ClusterRoleRowData } from './types';
 import { columns } from './columns';
 import { useClusterRoles } from './queries/useClusterRoles';
-import { useDeleteClusterRoles } from './queries/useDeleteClusterRoles';
+import { useDeleteClusterRolesMutation } from './queries/useDeleteClusterRolesMutation';
 
 const storageKey = 'clusterRoles';
 const settingsStore = createStore(storageKey);
@@ -101,7 +101,8 @@ type TableActionsProps = {
 
 function TableActions({ selectedItems }: TableActionsProps) {
   const environmentId = useEnvironmentId();
-  const deleteClusterRolesMutation = useDeleteClusterRoles(environmentId);
+  const deleteClusterRolesMutation =
+    useDeleteClusterRolesMutation(environmentId);
   const router = useRouter();
 
   async function handleRemoveClick(roles: SelectedRole[]) {

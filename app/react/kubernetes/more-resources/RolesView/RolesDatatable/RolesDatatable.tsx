@@ -27,7 +27,7 @@ import { RoleBinding } from '../RoleBindingsDatatable/types';
 import { columns } from './columns';
 import { Role, RoleRowData } from './types';
 import { useRoles } from './queries/useRoles';
-import { useDeleteRoles } from './queries/useDeleteRoles';
+import { useDeleteRolesMutation } from './queries/useDeleteRolesMutation';
 
 const storageKey = 'roles';
 interface TableSettings
@@ -99,7 +99,7 @@ type TableActionsProps = {
 
 function TableActions({ selectedItems }: TableActionsProps) {
   const environmentId = useEnvironmentId();
-  const deleteRolesMutation = useDeleteRoles(environmentId);
+  const deleteRolesMutation = useDeleteRolesMutation(environmentId);
   const router = useRouter();
 
   return (

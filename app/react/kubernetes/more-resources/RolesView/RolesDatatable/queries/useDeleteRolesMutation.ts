@@ -6,7 +6,7 @@ import { EnvironmentId } from '@/react/portainer/environments/types';
 
 import { queryKeys } from './query-keys';
 
-export function useDeleteRoles(environmentId: EnvironmentId) {
+export function useDeleteRolesMutation(environmentId: EnvironmentId) {
   const queryClient = useQueryClient();
   return useMutation(deleteRole, {
     ...withInvalidate(queryClient, [queryKeys.list(environmentId)]),

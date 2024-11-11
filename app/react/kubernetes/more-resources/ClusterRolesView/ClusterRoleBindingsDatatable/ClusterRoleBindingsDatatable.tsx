@@ -21,7 +21,7 @@ import { DefaultDatatableSettings } from '../../../datatables/DefaultDatatableSe
 import { ClusterRoleBinding } from './types';
 import { columns } from './columns';
 import { useClusterRoleBindings } from './queries/useClusterRoleBindings';
-import { useDeleteClusterRoleBindings } from './queries/useDeleteClusterRoleBindings';
+import { useDeleteClusterRoleBindingsMutation } from './queries/useDeleteClusterRoleBindingsMutation';
 
 const storageKey = 'clusterRoleBindings';
 const settingsStore = createStore(storageKey);
@@ -99,7 +99,7 @@ type TableActionsProps = {
 function TableActions({ selectedItems }: TableActionsProps) {
   const environmentId = useEnvironmentId();
   const deleteClusterRoleBindingsMutation =
-    useDeleteClusterRoleBindings(environmentId);
+    useDeleteClusterRoleBindingsMutation(environmentId);
   const router = useRouter();
 
   async function handleRemoveClick(roles: SelectedRole[]) {

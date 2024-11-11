@@ -26,7 +26,7 @@ import {
 import { RoleBinding } from './types';
 import { columns } from './columns';
 import { useRoleBindings } from './queries/useRoleBindings';
-import { useDeleteRoleBindings } from './queries/useDeleteRoleBindings';
+import { useDeleteRoleBindingsMutation } from './queries/useDeleteRoleBindingsMutation';
 
 const storageKey = 'roleBindings';
 interface TableSettings
@@ -111,7 +111,8 @@ type TableActionsProps = {
 
 function TableActions({ selectedItems }: TableActionsProps) {
   const environmentId = useEnvironmentId();
-  const deleteRoleBindingsMutation = useDeleteRoleBindings(environmentId);
+  const deleteRoleBindingsMutation =
+    useDeleteRoleBindingsMutation(environmentId);
   const router = useRouter();
 
   async function handleRemoveClick(roles: SelectedRole[]) {
