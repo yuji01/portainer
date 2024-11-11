@@ -6,29 +6,27 @@ import { EnvironmentId } from '@/react/portainer/environments/types';
 
 import { queryKeys } from './query-keys';
 
-export function useDeleteClusterRoleBindingsMutation(
-  environmentId: EnvironmentId
-) {
+export function useDeleteRoleBindings(environmentId: EnvironmentId) {
   const queryClient = useQueryClient();
-  return useMutation(deleteClusterRoleBindings, {
+  return useMutation(deleteRoleBindings, {
     ...withInvalidate(queryClient, [queryKeys.list(environmentId)]),
-    ...withGlobalError('Unable to delete cluster role bindings'),
+    ...withGlobalError('Unable to delete role bindings'),
   });
 }
 
-export async function deleteClusterRoleBindings({
+export async function deleteRoleBindings({
   environmentId,
   data,
 }: {
   environmentId: EnvironmentId;
-  data: string[];
+  data: Record<string, string[]>;
 }) {
   try {
     return await axios.post(
-      `kubernetes/${environmentId}/cluster_role_bindings/delete`,
+      `kubernetes/${environmentId}/role_bindings/delete`,
       data
     );
   } catch (e) {
-    throw parseAxiosError(e, `Unable to delete cluster role bindings`);
+    throw parseAxiosError(e, `Unable to delete role bindings`);
   }
 }
