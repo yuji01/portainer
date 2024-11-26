@@ -128,6 +128,8 @@ func (c *ComposeDeployer) Deploy(ctx context.Context, filePaths []string, option
 	return withComposeService(ctx, filePaths, options.Options, func(composeService api.Service, project *types.Project) error {
 		addServiceLabels(project, false)
 
+		project = project.WithoutUnnecessaryResources()
+
 		var opts api.UpOptions
 		if options.ForceRecreate {
 			opts.Create.Recreate = api.RecreateForce
