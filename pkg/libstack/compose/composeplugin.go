@@ -71,26 +71,19 @@ func withComposeService(
 		composeService := compose.NewComposeService(cli)
 
 		configDetails := types.ConfigDetails{
-			WorkingDir:  options.WorkingDir,
-			Environment: make(map[string]string),
+			WorkingDir: options.WorkingDir,
 		}
 
 		for _, p := range filePaths {
 			configDetails.ConfigFiles = append(configDetails.ConfigFiles, types.ConfigFile{Filename: p})
 		}
 
-		envFile := make(map[string]string)
-
-		if options.EnvFilePath != "" {
-			env, err := dotenv.GetEnvFromFile(make(map[string]string), []string{options.EnvFilePath})
-			if err != nil {
-				return fmt.Errorf("unable to get the environment from the env file: %w", err)
-			}
-
-			maps.Copy(envFile, env)
-
-			configDetails.Environment = env
+		env, err := parseEnvironment(options)
+		if err != nil {
+			return err
 		}
+
+		configDetails.Environment = env
 
 		if len(configDetails.ConfigFiles) == 0 {
 			return composeFn(composeService, nil)
@@ -262,4 +255,30 @@ func addServiceLabels(project *types.Project, oneOff bool) {
 		}
 		project.Services[i] = s
 	}
+}
+
+func parseEnvironment(options libstack.Options) (map[string]string, error) {
+	env := make(map[string]string)
+
+	for _, envLine := range options.Env {
+		e, err := dotenv.UnmarshalWithLookup(envLine, nil)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse environment variables: %w", err)
+		}
+
+		maps.Copy(env, e)
+	}
+
+	if options.EnvFilePath == "" {
+		return env, nil
+	}
+
+	e, err := dotenv.GetEnvFromFile(make(map[string]string), []string{options.EnvFilePath})
+	if err != nil {
+		return nil, fmt.Errorf("unable to get the environment from the env file: %w", err)
+	}
+
+	maps.Copy(env, e)
+
+	return env, nil
 }
