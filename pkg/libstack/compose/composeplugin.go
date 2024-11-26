@@ -103,21 +103,20 @@ func withComposeService(
 			return fmt.Errorf("failed to load the compose file: %w", err)
 		}
 
-		if options.EnvFilePath != "" {
-			// Work around compose path handling
-			for i, service := range project.Services {
-				for j, envFile := range service.EnvFiles {
-					if !filepath.IsAbs(envFile.Path) {
-						project.Services[i].EnvFiles[j].Path = filepath.Join(project.WorkingDir, envFile.Path)
-					}
+		// Work around compose path handling
+		for i, service := range project.Services {
+			for j, envFile := range service.EnvFiles {
+				if !filepath.IsAbs(envFile.Path) {
+					project.Services[i].EnvFiles[j].Path = filepath.Join(project.WorkingDir, envFile.Path)
 				}
 			}
+		}
 
-			if p, err := project.WithServicesEnvironmentResolved(true); err == nil {
-				project = p
-			} else {
-				return fmt.Errorf("failed to resolve services environment: %w", err)
-			}
+		// Set the services environment variables
+		if p, err := project.WithServicesEnvironmentResolved(true); err == nil {
+			project = p
+		} else {
+			return fmt.Errorf("failed to resolve services environment: %w", err)
 		}
 
 		return composeFn(composeService, project)
