@@ -70,20 +70,18 @@ func withComposeService(
 	return withCli(ctx, options, func(ctx context.Context, cli *command.DockerCli) error {
 		composeService := compose.NewComposeService(cli)
 
-		configDetails := types.ConfigDetails{
-			WorkingDir: options.WorkingDir,
-		}
-
-		for _, p := range filePaths {
-			configDetails.ConfigFiles = append(configDetails.ConfigFiles, types.ConfigFile{Filename: p})
-		}
-
 		env, err := parseEnvironment(options)
 		if err != nil {
 			return err
 		}
 
-		configDetails.Environment = env
+		configDetails := types.ConfigDetails{
+			Environment: env,
+		}
+
+		for _, p := range filePaths {
+			configDetails.ConfigFiles = append(configDetails.ConfigFiles, types.ConfigFile{Filename: p})
+		}
 
 		if len(configDetails.ConfigFiles) == 0 {
 			return composeFn(composeService, nil)
@@ -107,7 +105,7 @@ func withComposeService(
 		for i, service := range project.Services {
 			for j, envFile := range service.EnvFiles {
 				if !filepath.IsAbs(envFile.Path) {
-					project.Services[i].EnvFiles[j].Path = filepath.Join(project.WorkingDir, envFile.Path)
+					project.Services[i].EnvFiles[j].Path = filepath.Join(filepath.Dir(filePaths[0]), envFile.Path)
 				}
 			}
 		}
