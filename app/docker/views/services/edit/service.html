@@ -8,7 +8,6 @@
     </div>
   </div>
 </div>
-
 <div class="row">
   <div class="col-lg-9 col-md-9 col-xs-9">
     <rd-widget>
@@ -17,19 +16,22 @@
         <table class="table">
           <tbody>
             <tr>
-              <td>Name</td>
+              <td class="w-1/5">Name</td>
               <td ng-if="applicationState.endpoint.apiVersion <= 1.24">
-                <input type="text" class="form-control" ng-model="service.Name" ng-change="updateServiceAttribute(service, 'Name')" ng-disabled="isUpdating" />
+                <input
+                  type="text"
+                  class="form-control"
+                  ng-model="service.Name"
+                  ng-change="updateServiceAttribute(service, 'Name')"
+                  ng-disabled="isUpdating"
+                  data-cy="docker-service-edit-name"
+                />
               </td>
-              <td ng-if="applicationState.endpoint.apiVersion >= 1.25">
-                {{ service.Name }}
-              </td>
+              <td ng-if="applicationState.endpoint.apiVersion >= 1.25"> {{ service.Name }} </td>
             </tr>
             <tr>
               <td>ID</td>
-              <td>
-                {{ service.Id }}
-              </td>
+              <td> {{ service.Id }} </td>
             </tr>
             <tr ng-if="service.CreatedAt">
               <td>Created at</td>
@@ -54,6 +56,7 @@
                   <input
                     class="input-sm"
                     type="number"
+                    data-cy="docker-service-edit-replicas-input"
                     ng-model="service.Replicas"
                     ng-change="updateServiceAttribute(service, 'Replicas')"
                     disable-authorization="DockerServiceUpdate"
@@ -66,26 +69,29 @@
               <td>{{ service.Image }}</td>
             </tr>
             <tr ng-if="isAdmin && applicationState.endpoint.type !== 4">
-              <td colspan="{{ webhookURL ? '1' : '2' }}">
-                <por-switch-field
-                  tooltip="'Webhook (or callback URI) used to automate the update of this service. Sending a POST request to this callback URI (without requiring any authentication) will pull the most up-to-date version of the associated image and re-deploy this service.'"
-                  checked="WebhookExists"
-                  disabled="!isAdmin"
-                  on-change="(onWebhookChange)"
-                  label="'Service webhook'"
-                ></por-switch-field>
-              </td>
-              <td ng-if="webhookURL">
-                <span class="text-muted">{{ webhookURL | truncatelr }}</span>
-                <button type="button" class="btn btn-sm btn-primary btn-sm space-left" ng-if="webhookURL" ng-click="copyWebhook()">
-                  <span>
-                    <pr-icon icon="'copy'" class-name="'mr-1'"></pr-icon>
-                    Copy link</span
+              <td>
+                <div class="inline-flex items-center">
+                  <div> Service webhook </div>
+                  <portainer-tooltip
+                    message="'Webhook (or callback URI) used to automate the update of this service. Sending a POST request to this callback URI (without requiring any authentication) will pull the most up-to-date version of the associated image and re-deploy this service.'"
                   >
-                </button>
-                <span>
-                  <pr-icon id="copyNotification" icon="'check'" mode="'success'" style="display: none"></pr-icon>
-                </span>
+                  </portainer-tooltip>
+                </div>
+              </td>
+              <td>
+                <div class="flex flex-wrap items-center">
+                  <por-switch-field label-class="'!mr-0'" checked="WebhookExists" disabled="disabledWebhookButton(WebhookExists)" on-change="(onWebhookChange)"></por-switch-field>
+                  <span ng-if="webhookURL">
+                    <span class="text-muted">{{ webhookURL | truncatelr }}</span>
+                    <button type="button" class="btn btn-sm btn-primary btn-sm space-left" ng-if="webhookURL" ng-click="copyWebhook()">
+                      <pr-icon icon="'copy'" class-name="'mr-1'"></pr-icon>
+                      Copy link
+                    </button>
+                    <span>
+                      <pr-icon id="copyNotification" icon="'check'" mode="'success'" style="display: none"></pr-icon>
+                    </span>
+                  </span>
+                </div>
               </td>
             </tr>
             <tr authorization="DockerServiceLogs, DockerServiceUpdate, DockerServiceDelete">
@@ -162,7 +168,7 @@
               >Apply changes</button
             >
             <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-              <span class="caret"></span>
+              <pr-icon icon="'chevron-down'"></pr-icon>
             </button>
             <ul class="dropdown-menu">
               <li><a ng-click="cancelChanges(service, ['Mode', 'Replicas', 'Name'])">Reset changes</a></li>
@@ -207,6 +213,7 @@
   resource-control="service.ResourceControl"
   resource-type="resourceType"
   on-update-success="(onUpdateResourceControlSuccess)"
+  environment-id="endpoint.Id"
 >
 </access-control-panel>
 <!-- !access-control-panel -->
@@ -228,7 +235,17 @@
   <div class="col-lg-12 col-md-12 col-xs-12">
     <h3 id="service-network-specs">Networks &amp; ports</h3>
     <div id="service-networks" class="padding-top" ng-include="'app/docker/views/services/edit/includes/networks.html'"></div>
-    <div id="service-published-ports" class="padding-top" ng-include="'app/docker/views/services/edit/includes/ports.html'"></div>
+
+    <docker-service-ports-mapping-field
+      id="service-published-ports"
+      class="block padding-top"
+      values="formValues.ports"
+      on-change="(onChangePorts)"
+      has-changes="hasChanges(service, ['Ports'])"
+      on-reset="(onResetPorts)"
+      on-submit="(onSubmit)"
+    ></docker-service-ports-mapping-field>
+
     <div id="service-hosts-entries" class="padding-top" ng-include="'app/docker/views/services/edit/includes/hosts.html'"></div>
   </div>
 </div>
@@ -251,6 +268,7 @@
     <div id="service-labels" class="padding-top" ng-include="'app/docker/views/services/edit/includes/servicelabels.html'"></div>
     <div id="service-configs" class="padding-top" ng-include="'app/docker/views/services/edit/includes/configs.html'"></div>
     <div id="service-secrets" ng-if="applicationState.endpoint.apiVersion >= 1.25" class="padding-top" ng-include="'app/docker/views/services/edit/includes/secrets.html'"></div>
-    <div id="service-tasks" class="padding-top" ng-include="'app/docker/views/services/edit/includes/tasks.html'"></div>
   </div>
 </div>
+
+<div id="service-tasks" class="padding-top" ng-include="'app/docker/views/services/edit/includes/tasks.html'"></div>

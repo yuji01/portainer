@@ -4,18 +4,19 @@ import { Loader2 } from 'lucide-react';
 
 import { Icon, IconProps } from '@/react/components/Icon';
 import { pluralize } from '@/portainer/helpers/strings';
+import { AutomationTestingProps } from '@/types';
 
 import { Link } from '@@/Link';
 
-interface Props extends IconProps {
+interface Props extends IconProps, AutomationTestingProps {
   type: string;
   pluralType?: string; // in case the pluralise function isn't suitable
   isLoading?: boolean;
   isRefetching?: boolean;
   value?: number;
   to?: string;
+  params?: object;
   children?: ReactNode;
-  dataCy?: string;
 }
 
 export function DashboardItem({
@@ -26,8 +27,9 @@ export function DashboardItem({
   isRefetching,
   value,
   to,
+  params,
   children,
-  dataCy,
+  'data-cy': dataCy,
 }: Props) {
   const Item = (
     <div
@@ -41,7 +43,7 @@ export function DashboardItem({
     >
       <div
         className={clsx(
-          'text-muted absolute top-2 right-2 flex items-center transition-opacity',
+          'text-muted absolute right-2 top-2 flex items-center text-xs transition-opacity',
           isRefetching ? 'opacity-100' : 'opacity-0'
         )}
       >
@@ -50,7 +52,7 @@ export function DashboardItem({
       </div>
       <div
         className={clsx(
-          'text-muted absolute top-2 right-2 flex items-center transition-opacity',
+          'text-muted absolute right-2 top-2 flex items-center text-xs transition-opacity',
           isLoading ? 'opacity-100' : 'opacity-0'
         )}
       >
@@ -101,7 +103,12 @@ export function DashboardItem({
 
   if (to) {
     return (
-      <Link to={to} className="!no-underline">
+      <Link
+        to={to}
+        className="!no-underline"
+        params={params}
+        data-cy={`${dataCy}-link`}
+      >
         {Item}
       </Link>
     );

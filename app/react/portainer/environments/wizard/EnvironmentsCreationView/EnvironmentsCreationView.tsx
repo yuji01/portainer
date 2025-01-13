@@ -9,7 +9,7 @@ import {
   Environment,
   EnvironmentId,
 } from '@/react/portainer/environments/types';
-import { useAnalytics } from '@/angulartics.matomo/analytics-services';
+import { useAnalytics } from '@/react/hooks/useAnalytics';
 
 import { Stepper } from '@@/Stepper';
 import { Widget, WidgetBody, WidgetTitle } from '@@/Widget';
@@ -22,6 +22,7 @@ import {
   EnvironmentOptionValue,
   environmentTypes,
   formTitles,
+  EnvironmentOption,
 } from '../EnvironmentTypeSelectView/environment-types';
 
 import { WizardDocker } from './WizardDocker';
@@ -30,10 +31,11 @@ import { WizardKubernetes } from './WizardKubernetes';
 import { AnalyticsState, AnalyticsStateKey } from './types';
 import styles from './EnvironmentsCreationView.module.css';
 import { WizardEndpointsList } from './WizardEndpointsList';
+import { WizardPodman } from './WizardPodman';
 
 export function EnvironmentCreationView() {
   const {
-    params: { localEndpointId: localEndpointIdParam },
+    params: { localEndpointId: localEndpointIdParam, referrer },
   } = useCurrentStateAndParams();
 
   const [environmentIds, setEnvironmentIds] = useState<EnvironmentId[]>(() => {
@@ -71,6 +73,7 @@ export function EnvironmentCreationView() {
       <PageHeader
         title="Quick Setup"
         breadcrumbs={[{ label: 'Environment Wizard' }]}
+        reload
       />
 
       <div className={styles.wizardWrapper}>
@@ -92,10 +95,17 @@ export function EnvironmentCreationView() {
                     'flex justify-between'
                   )}
                 >
-                  <Button disabled={isFirstStep} onClick={onPreviousClick}>
+                  <Button
+                    disabled={isFirstStep}
+                    onClick={onPreviousClick}
+                    data-cy="environment-wizard-previous-button"
+                  >
                     <Icon icon={ArrowLeft} /> Previous
                   </Button>
-                  <Button onClick={onNextClick}>
+                  <Button
+                    onClick={onNextClick}
+                    data-cy="environment-wizard-next-button"
+                  >
                     {isLastStep ? 'Close' : 'Next'}
                     <Icon icon={ArrowRight} />
                   </Button>
@@ -129,8 +139,7 @@ export function EnvironmentCreationView() {
         ])
       ),
     });
-    if (localStorage.getItem('wizardReferrer') === 'environments') {
-      localStorage.removeItem('wizardReferrer');
+    if (referrer === 'environments') {
       router.stateService.go('portainer.endpoints');
       return;
     }
@@ -154,7 +163,7 @@ function useParamEnvironmentTypes(): EnvironmentOptionValue[] {
 }
 
 function useStepper(
-  steps: typeof environmentTypes[number][],
+  steps: EnvironmentOption[][number][],
   onFinish: () => void
 ) {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -190,6 +199,8 @@ function useStepper(
       case 'dockerStandalone':
       case 'dockerSwarm':
         return WizardDocker;
+      case 'podman':
+        return WizardPodman;
       case 'aci':
         return WizardAzure;
       case 'kubernetes':
@@ -204,15 +215,18 @@ function useAnalyticsState() {
   const [analytics, setAnalyticsState] = useState<AnalyticsState>({
     dockerAgent: 0,
     dockerApi: 0,
+    dockerEdgeAgentAsync: 0,
+    dockerEdgeAgentStandard: 0,
+    podmanAgent: 0,
+    podmanEdgeAgentAsync: 0,
+    podmanEdgeAgentStandard: 0,
+    podmanLocalEnvironment: 0,
     kubernetesAgent: 0,
     kubernetesEdgeAgentAsync: 0,
     kubernetesEdgeAgentStandard: 0,
     kaasAgent: 0,
     aciApi: 0,
     localEndpoint: 0,
-    nomadEdgeAgentStandard: 0,
-    dockerEdgeAgentAsync: 0,
-    dockerEdgeAgentStandard: 0,
   });
 
   return { analytics, setAnalytics };

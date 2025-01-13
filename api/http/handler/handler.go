@@ -19,7 +19,6 @@ import (
 	"github.com/portainer/portainer/api/http/handler/file"
 	"github.com/portainer/portainer/api/http/handler/gitops"
 	"github.com/portainer/portainer/api/http/handler/helm"
-	"github.com/portainer/portainer/api/http/handler/hostmanagement/fdo"
 	"github.com/portainer/portainer/api/http/handler/hostmanagement/openamt"
 	"github.com/portainer/portainer/api/http/handler/kubernetes"
 	"github.com/portainer/portainer/api/http/handler/ldap"
@@ -69,7 +68,6 @@ type Handler struct {
 	SettingsHandler        *settings.Handler
 	SSLHandler             *ssl.Handler
 	OpenAMTHandler         *openamt.Handler
-	FDOHandler             *fdo.Handler
 	StackHandler           *stacks.Handler
 	StorybookHandler       *storybook.Handler
 	SystemHandler          *system.Handler
@@ -81,10 +79,11 @@ type Handler struct {
 	UserHandler            *users.Handler
 	WebSocketHandler       *websocket.Handler
 	WebhookHandler         *webhooks.Handler
+	UserHelmHandler        *helm.Handler
 }
 
 // @title PortainerCE API
-// @version 2.19.0
+// @version 2.26.0
 // @description.markdown api-description.md
 // @termsOfService
 
@@ -99,7 +98,7 @@ type Handler struct {
 
 // @securitydefinitions.apikey ApiKeyAuth
 // @in header
-// @name x-api-key
+// @name X-API-KEY
 
 // @securitydefinitions.apikey jwt
 // @in header
@@ -107,8 +106,12 @@ type Handler struct {
 
 // @tag.name auth
 // @tag.description Authenticate against Portainer HTTP API
+// @tag.name backup
+// @tag.description Manage backups
 // @tag.name custom_templates
 // @tag.description Manage Custom Templates
+// @tag.name docker
+// @tag.description Manage Docker resources
 // @tag.name edge
 // @tag.description Manage Edge related environment(endpoint) settings
 // @tag.name edge_groups
@@ -119,14 +122,20 @@ type Handler struct {
 // @tag.description Manage Edge Stacks
 // @tag.name edge_templates
 // @tag.description Manage Edge Templates
-// @tag.name endpoints
-// @tag.description Manage Docker environments(endpoints)
 // @tag.name endpoint_groups
 // @tag.description Manage environment(endpoint) groups
+// @tag.name endpoints
+// @tag.description Manage Docker environments(endpoints)
 // @tag.name gitops
 // @tag.description Operate git repository
+// @tag.name helm
+// @tag.description Manage Helm charts
+// @tag.name intel
+// @tag.description Manage Intel AMT settings
 // @tag.name kubernetes
 // @tag.description Manage Kubernetes cluster
+// @tag.name ldap
+// @tag.description Manage LDAP settings
 // @tag.name motd
 // @tag.description Fetch the message of the day
 // @tag.name registries
@@ -147,16 +156,16 @@ type Handler struct {
 // @tag.description Manage Portainer system
 // @tag.name tags
 // @tag.description Manage tags
-// @tag.name teams
-// @tag.description Manage teams
 // @tag.name team_memberships
 // @tag.description Manage team memberships
+// @tag.name teams
+// @tag.description Manage teams
 // @tag.name templates
 // @tag.description Manage App Templates
-// @tag.name users
-// @tag.description Manage users
 // @tag.name upload
 // @tag.description Upload files
+// @tag.name users
+// @tag.description Manage users
 // @tag.name webhooks
 // @tag.description Manage webhooks
 // @tag.name websocket
@@ -188,7 +197,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case strings.HasPrefix(r.URL.Path, "/api/kubernetes"):
 		http.StripPrefix("/api", h.KubernetesHandler).ServeHTTP(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/docker"):
-		http.StripPrefix("/api/docker", h.DockerHandler).ServeHTTP(w, r)
+		http.StripPrefix("/api", h.DockerHandler).ServeHTTP(w, r)
 
 	// Helm subpath under kubernetes -> /api/endpoints/{id}/kubernetes/helm
 	case strings.HasPrefix(r.URL.Path, "/api/endpoints/") && strings.Contains(r.URL.Path, "/kubernetes/helm"):
@@ -241,8 +250,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.StripPrefix("/api", h.SSLHandler).ServeHTTP(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/open_amt"):
 		http.StripPrefix("/api", h.OpenAMTHandler).ServeHTTP(w, r)
-	case strings.HasPrefix(r.URL.Path, "/api/fdo"):
-		http.StripPrefix("/api", h.FDOHandler).ServeHTTP(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/teams"):
 		http.StripPrefix("/api", h.TeamHandler).ServeHTTP(w, r)
 	case strings.HasPrefix(r.URL.Path, "/api/team_memberships"):

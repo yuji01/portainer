@@ -2,23 +2,27 @@ import angular from 'angular';
 
 import { r2a } from '@/react-tools/react2angular';
 import { withReactQuery } from '@/react-tools/withReactQuery';
-import {
-  DefaultRegistryAction,
-  DefaultRegistryDomain,
-  DefaultRegistryName,
-} from '@/react/portainer/registries/ListView/DefaultRegistry';
+import { withUIRouter } from '@/react-tools/withUIRouter';
+import { RepositoriesDatatable } from '@/react/portainer/registries/repositories/ListView/RepositoriesDatatable';
+import { TagsDatatable } from '@/react/portainer/registries/repositories/ItemView/TagsDatatable/TagsDatatable';
+import { GitlabProjectTable } from '@/react/portainer/registries/CreateView/GitlabProjectsTable/GitlabProjectsTable';
 
 export const registriesModule = angular
   .module('portainer.app.react.components.registries', [])
   .component(
-    'defaultRegistryName',
-    r2a(withReactQuery(DefaultRegistryName), [])
+    'registryRepositoriesDatatable',
+    r2a(withUIRouter(withReactQuery(RepositoriesDatatable)), ['dataset'])
   )
   .component(
-    'defaultRegistryAction',
-    r2a(withReactQuery(DefaultRegistryAction), [])
+    'registriesRepositoryTagsDatatable',
+    r2a(withUIRouter(withReactQuery(TagsDatatable)), [
+      'dataset',
+      'advancedFeaturesAvailable',
+      'onRemove',
+      'onRetag',
+    ])
   )
   .component(
-    'defaultRegistryDomain',
-    r2a(withReactQuery(DefaultRegistryDomain), [])
+    'gitlabProjectSelector',
+    r2a(GitlabProjectTable, ['dataset', 'onChange', 'value'])
   ).name;

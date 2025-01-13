@@ -1,5 +1,5 @@
 import clsx from 'clsx';
-import { Icon as ReactFeatherComponentType, Check } from 'lucide-react';
+import { type LucideIcon, Check } from 'lucide-react';
 import { Fragment } from 'react';
 
 import { Icon } from '@/react/components/Icon';
@@ -9,7 +9,7 @@ import { getFeatureDetails } from '@@/BEFeatureIndicator/utils';
 
 import styles from './BoxSelectorItem.module.css';
 import { BoxSelectorOption, Value } from './types';
-import { LimitedToBeIndicator } from './LimitedToBeIndicator';
+import { LimitedToBeBoxSelectorIndicator } from './LimitedToBeBoxSelectorIndicator';
 import { BoxOption } from './BoxOption';
 import { LogoIcon } from './LogoIcon';
 
@@ -22,7 +22,7 @@ type Props<T extends Value> = {
   isSelected(value: T): boolean;
   type?: 'radio' | 'checkbox';
   slim?: boolean;
-  checkIcon?: ReactFeatherComponentType;
+  checkIcon?: LucideIcon;
 };
 
 export function BoxSelectorItem<T extends Value>({
@@ -39,8 +39,6 @@ export function BoxSelectorItem<T extends Value>({
   const { limitedToBE = false, url: featureUrl } = getFeatureDetails(
     option.feature
   );
-
-  const beIndicatorTooltipId = `box-selector-item-${radioName}-${option.id}-limited`;
 
   const ContentBox = slim ? 'div' : Fragment;
 
@@ -60,13 +58,14 @@ export function BoxSelectorItem<T extends Value>({
       checkIcon={checkIcon}
     >
       {limitedToBE && (
-        <LimitedToBeIndicator
-          tooltipId={beIndicatorTooltipId}
+        <LimitedToBeBoxSelectorIndicator
           url={featureUrl}
+          // show tooltip only for radio type options because be-only checkbox options can't be selected
+          showTooltip={type === 'radio'}
         />
       )}
       <div
-        className={clsx('flex gap-2', {
+        className={clsx('flex min-w-[140px] gap-2', {
           'opacity-30': limitedToBE,
           'h-full flex-col justify-start': !slim,
           'slim items-center': slim,
@@ -93,18 +92,18 @@ export function BoxSelectorItem<T extends Value>({
     }
 
     if (option.iconType === 'badge') {
-      return <BadgeIcon icon={option.icon} />;
+      return <BadgeIcon icon={option.icon} iconClass={option.iconClass} />;
     }
 
     if (option.iconType === 'raw') {
       return (
         <Icon
           icon={option.icon}
-          className={clsx(styles.icon, '!flex items-center')}
+          className={clsx(styles.icon, option.iconClass, '!flex items-center')}
         />
       );
     }
 
-    return <LogoIcon icon={option.icon} />;
+    return <LogoIcon icon={option.icon} iconClass={option.iconClass} />;
   }
 }

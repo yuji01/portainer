@@ -3,7 +3,7 @@ import { object, SchemaOf, string } from 'yup';
 
 import { useUpgradeEditionMutation } from '@/react/portainer/system/useUpgradeEditionMutation';
 import { notifySuccess } from '@/portainer/services/notifications';
-import { useAnalytics } from '@/angulartics.matomo/analytics-services';
+import { useAnalytics } from '@/react/hooks/useAnalytics';
 
 import { Button, LoadingButton } from '@@/buttons';
 import { FormControl } from '@@/form-components/FormControl';
@@ -76,6 +76,7 @@ export function UploadLicenseDialog({
               <div className="flex w-full gap-2 [&>*]:w-1/2">
                 <Button
                   color="default"
+                  data-cy="get-license-button"
                   size="medium"
                   className="w-full"
                   onClick={goToGetLicense}
@@ -84,6 +85,7 @@ export function UploadLicenseDialog({
                 </Button>
                 <LoadingButton
                   color="primary"
+                  data-cy="start-upgrade-button"
                   size="medium"
                   loadingText="Validating License"
                   isLoading={upgradeMutation.isLoading}

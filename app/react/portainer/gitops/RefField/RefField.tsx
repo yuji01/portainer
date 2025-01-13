@@ -1,7 +1,7 @@
 import { PropsWithChildren, ReactNode } from 'react';
 import { SchemaOf, string } from 'yup';
 
-import { StackId } from '@/react/docker/stacks/types';
+import { StackId } from '@/react/common/stacks/types';
 import { useStateWrapper } from '@/react/hooks/useStateWrapper';
 
 import { FormControl } from '@@/form-components/FormControl';
@@ -18,8 +18,9 @@ interface Props {
   onChange(value: string): void;
   model: RefFieldModel;
   error?: string;
-  isUrlValid: boolean;
+  isUrlValid?: boolean;
   stackId?: StackId;
+  createdFromCustomTemplateId?: number;
 }
 
 export function RefField({
@@ -29,11 +30,13 @@ export function RefField({
   error,
   isUrlValid,
   stackId,
+  createdFromCustomTemplateId,
 }: Props) {
   const [inputValue, updateInputValue] = useStateWrapper(value, onChange);
-
+  const inputId = 'repository-reference-field';
   return isBE ? (
     <Wrapper
+      inputId={inputId}
       errors={error}
       tip={
         <>
@@ -44,15 +47,18 @@ export function RefField({
       }
     >
       <RefSelector
+        inputId={inputId}
         value={value}
         onChange={onChange}
         model={model}
         isUrlValid={isUrlValid}
         stackId={stackId}
+        createdFromCustomTemplateId={createdFromCustomTemplateId}
       />
     </Wrapper>
   ) : (
     <Wrapper
+      inputId={inputId}
       errors={error}
       tip={
         <>
@@ -65,6 +71,8 @@ export function RefField({
       }
     >
       <Input
+        id={inputId}
+        data-cy="repository-reference-input"
         value={inputValue}
         onChange={(e) => updateInputValue(e.target.value)}
         placeholder="refs/heads/main"
@@ -77,7 +85,8 @@ function Wrapper({
   tip,
   children,
   errors,
-}: PropsWithChildren<{ tip: ReactNode; errors?: string }>) {
+  inputId,
+}: PropsWithChildren<{ tip: ReactNode; errors?: string; inputId: string }>) {
   return (
     <div className="form-group">
       <span className="col-sm-12 mb-2">
@@ -86,7 +95,7 @@ function Wrapper({
       <div className="col-sm-12">
         <FormControl
           label="Repository reference"
-          inputId="stack_repository_reference_name"
+          inputId={inputId}
           required
           errors={errors}
         >

@@ -4,6 +4,7 @@ import {
   SelectComponentsConfig,
 } from 'react-select';
 import _ from 'lodash';
+import { AriaAttributes } from 'react';
 
 import { AutomationTestingProps } from '@/types';
 
@@ -12,6 +13,7 @@ import { Select as ReactSelect } from '@@/form-components/ReactSelect';
 export interface Option<TValue> {
   value: TValue;
   label: string;
+  disabled?: boolean;
 }
 
 type Options<TValue> = OptionsOrGroups<
@@ -19,18 +21,22 @@ type Options<TValue> = OptionsOrGroups<
   GroupBase<Option<TValue>>
 >;
 
-interface SharedProps extends AutomationTestingProps {
+interface SharedProps
+  extends AutomationTestingProps,
+    Pick<AriaAttributes, 'aria-label'> {
   name?: string;
   inputId?: string;
   placeholder?: string;
   disabled?: boolean;
   isClearable?: boolean;
   bindToBody?: boolean;
+  isLoading?: boolean;
+  noOptionsMessage?: () => string;
 }
 
 interface MultiProps<TValue> extends SharedProps {
   value: readonly TValue[];
-  onChange(value: readonly TValue[]): void;
+  onChange(value: TValue[]): void;
   options: Options<TValue>;
   isMulti: true;
   components?: SelectComponentsConfig<
@@ -82,9 +88,15 @@ export function SingleSelect<TValue = string>({
   isClearable,
   bindToBody,
   components,
+  isLoading,
+  noOptionsMessage,
+  isMulti,
+  ...aria
 }: SingleProps<TValue>) {
   const selectedValue =
-    value || (typeof value === 'number' && value === 0)
+    value ||
+    (typeof value === 'number' && value === 0) ||
+    (typeof value === 'string' && value === '')
       ? _.first(findSelectedOptions<TValue>(options, value))
       : null;
 
@@ -97,12 +109,17 @@ export function SingleSelect<TValue = string>({
       options={options}
       value={selectedValue}
       onChange={(option) => onChange(option ? option.value : null)}
+      isOptionDisabled={(option) => !!option.disabled}
       data-cy={dataCy}
       inputId={inputId}
       placeholder={placeholder}
       isDisabled={disabled}
       menuPortalTarget={bindToBody ? document.body : undefined}
       components={components}
+      isLoading={isLoading}
+      noOptionsMessage={noOptionsMessage}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...aria}
     />
   );
 }
@@ -142,6 +159,9 @@ export function MultiSelect<TValue = string>({
   isClearable,
   bindToBody,
   components,
+  isLoading,
+  noOptionsMessage,
+  ...aria
 }: Omit<MultiProps<TValue>, 'isMulti'>) {
   const selectedOptions = findSelectedOptions(options, value);
   return (
@@ -151,6 +171,7 @@ export function MultiSelect<TValue = string>({
       isClearable={isClearable}
       getOptionLabel={(option) => option.label}
       getOptionValue={(option) => String(option.value)}
+      isOptionDisabled={(option) => !!option.disabled}
       options={options}
       value={selectedOptions}
       closeMenuOnSelect={false}
@@ -161,6 +182,10 @@ export function MultiSelect<TValue = string>({
       isDisabled={disabled}
       menuPortalTarget={bindToBody ? document.body : undefined}
       components={components}
+      isLoading={isLoading}
+      noOptionsMessage={noOptionsMessage}
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...aria}
     />
   );
 }

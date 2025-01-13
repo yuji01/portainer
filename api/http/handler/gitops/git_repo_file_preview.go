@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/asaskevich/govalidator"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
 	gittypes "github.com/portainer/portainer/api/git/types"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
+
+	"github.com/asaskevich/govalidator"
 )
 
 type fileResponse struct {
@@ -28,16 +29,16 @@ type repositoryFilePreviewPayload struct {
 }
 
 func (payload *repositoryFilePreviewPayload) Validate(r *http.Request) error {
-	if govalidator.IsNull(payload.Repository) || !govalidator.IsURL(payload.Repository) {
-		return errors.New("Invalid repository URL. Must correspond to a valid URL format")
+	if len(payload.Repository) == 0 || !govalidator.IsURL(payload.Repository) {
+		return errors.New("invalid repository URL. Must correspond to a valid URL format")
 	}
 
-	if govalidator.IsNull(payload.Reference) {
+	if len(payload.Reference) == 0 {
 		payload.Reference = "refs/heads/main"
 	}
 
-	if govalidator.IsNull(payload.TargetFile) {
-		return errors.New("Invalid target filename.")
+	if len(payload.TargetFile) == 0 {
+		return errors.New("invalid target filename")
 	}
 
 	return nil
@@ -70,11 +71,11 @@ func (handler *Handler) gitOperationRepoFilePreview(w http.ResponseWriter, r *ht
 
 	err = handler.gitService.CloneRepository(projectPath, payload.Repository, payload.Reference, payload.Username, payload.Password, payload.TLSSkipVerify)
 	if err != nil {
-		if err == gittypes.ErrAuthenticationFailure {
+		if errors.Is(err, gittypes.ErrAuthenticationFailure) {
 			return httperror.BadRequest("Invalid git credential", err)
 		}
 
-		newErr := fmt.Errorf("unable to clone git repository: %w", err)
+		newErr := fmt.Errorf("unable to clone git repository, error: %w", err)
 		return httperror.InternalServerError(newErr.Error(), newErr)
 	}
 

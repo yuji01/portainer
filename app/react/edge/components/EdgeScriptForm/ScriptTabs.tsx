@@ -5,6 +5,7 @@ import { useAgentDetails } from '@/react/portainer/environments/queries/useAgent
 import { Code } from '@@/Code';
 import { CopyButton } from '@@/buttons/CopyButton';
 import { NavTabs } from '@@/NavTabs';
+import { NavContainer } from '@@/NavTabs/NavContainer';
 
 import { ScriptFormValues, Platform } from './types';
 import { CommandTab } from './scripts';
@@ -59,7 +60,9 @@ export function ScriptTabs({
         <>
           <Code>{cmd}</Code>
           <div className="mt-2">
-            <CopyButton copyText={cmd}>Copy</CopyButton>
+            <CopyButton copyText={cmd} data-cy="copy-edge-script-button">
+              Copy
+            </CopyButton>
           </div>
         </>
       ),
@@ -67,10 +70,12 @@ export function ScriptTabs({
   });
 
   return (
-    <NavTabs
-      selectedId={platform}
-      options={options}
-      onSelect={(id: Platform) => onPlatformChange(id)}
-    />
+    <NavContainer>
+      <NavTabs
+        selectedId={platform}
+        options={options}
+        onSelect={(id: Platform) => onPlatformChange(id)}
+      />
+    </NavContainer>
   );
 }

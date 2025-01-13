@@ -2,19 +2,19 @@ package edgejobs
 
 import (
 	"errors"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
 	"github.com/portainer/portainer/api/internal/edge"
+	"github.com/portainer/portainer/api/internal/edge/cache"
 	"github.com/portainer/portainer/api/internal/endpointutils"
-	"github.com/portainer/portainer/api/internal/maps"
-	"github.com/portainer/portainer/pkg/featureflags"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
 
 	"github.com/asaskevich/govalidator"
 )
@@ -49,7 +49,7 @@ type edgeJobCreateFromFileContentPayload struct {
 }
 
 func (payload *edgeJobCreateFromFileContentPayload) Validate(r *http.Request) error {
-	if govalidator.IsNull(payload.Name) {
+	if len(payload.Name) == 0 {
 		return errors.New("invalid Edge job name")
 	}
 
@@ -57,7 +57,7 @@ func (payload *edgeJobCreateFromFileContentPayload) Validate(r *http.Request) er
 		return errors.New("invalid Edge job name format. Allowed characters are: [a-zA-Z0-9_.-]")
 	}
 
-	if govalidator.IsNull(payload.CronExpression) {
+	if len(payload.CronExpression) == 0 {
 		return errors.New("invalid cron expression")
 	}
 
@@ -65,7 +65,7 @@ func (payload *edgeJobCreateFromFileContentPayload) Validate(r *http.Request) er
 		return errors.New("no environments or groups have been provided")
 	}
 
-	if govalidator.IsNull(payload.FileContent) {
+	if len(payload.FileContent) == 0 {
 		return errors.New("invalid script file content")
 	}
 
@@ -92,15 +92,11 @@ func (handler *Handler) createEdgeJobFromFileContent(w http.ResponseWriter, r *h
 	}
 
 	var edgeJob *portainer.EdgeJob
-	if featureflags.IsEnabled(portainer.FeatureNoTx) {
-		edgeJob, err = handler.createEdgeJob(handler.DataStore, &payload.edgeJobBasePayload, []byte(payload.FileContent))
-	} else {
-		err = handler.DataStore.UpdateTx(func(tx dataservices.DataStoreTx) error {
-			edgeJob, err = handler.createEdgeJob(tx, &payload.edgeJobBasePayload, []byte(payload.FileContent))
+	err = handler.DataStore.UpdateTx(func(tx dataservices.DataStoreTx) error {
+		edgeJob, err = handler.createEdgeJob(tx, &payload.edgeJobBasePayload, []byte(payload.FileContent))
 
-			return err
-		})
-	}
+		return err
+	})
 
 	return txResponse(w, edgeJob, err)
 }
@@ -118,9 +114,12 @@ func (handler *Handler) createEdgeJob(tx dataservices.DataStoreTx, payload *edge
 		}
 	}
 
-	err = handler.addAndPersistEdgeJob(tx, edgeJob, fileContent, endpoints)
-	if err != nil {
+	if err := handler.addAndPersistEdgeJob(tx, edgeJob, fileContent, endpoints); err != nil {
 		return nil, httperror.InternalServerError("Unable to schedule Edge job", err)
+	}
+
+	for _, endpointID := range endpoints {
+		cache.Del(endpointID)
 	}
 
 	return edgeJob, nil
@@ -149,15 +148,13 @@ func (payload *edgeJobCreateFromFilePayload) Validate(r *http.Request) error {
 	payload.CronExpression = cronExpression
 
 	var endpoints []portainer.EndpointID
-	err = request.RetrieveMultiPartFormJSONValue(r, "Endpoints", &endpoints, true)
-	if err != nil {
+	if err := request.RetrieveMultiPartFormJSONValue(r, "Endpoints", &endpoints, true); err != nil {
 		return errors.New("invalid environments")
 	}
 	payload.Endpoints = endpoints
 
 	var edgeGroups []portainer.EdgeGroupID
-	err = request.RetrieveMultiPartFormJSONValue(r, "EdgeGroups", &edgeGroups, true)
-	if err != nil {
+	if err := request.RetrieveMultiPartFormJSONValue(r, "EdgeGroups", &edgeGroups, true); err != nil {
 		return errors.New("invalid edge groups")
 	}
 	payload.EdgeGroups = edgeGroups
@@ -201,15 +198,11 @@ func (handler *Handler) createEdgeJobFromFile(w http.ResponseWriter, r *http.Req
 	}
 
 	var edgeJob *portainer.EdgeJob
-	if featureflags.IsEnabled(portainer.FeatureNoTx) {
-		edgeJob, err = handler.createEdgeJob(handler.DataStore, &payload.edgeJobBasePayload, payload.File)
-	} else {
-		err = handler.DataStore.UpdateTx(func(tx dataservices.DataStoreTx) error {
-			edgeJob, err = handler.createEdgeJob(tx, &payload.edgeJobBasePayload, payload.File)
+	err = handler.DataStore.UpdateTx(func(tx dataservices.DataStoreTx) error {
+		edgeJob, err = handler.createEdgeJob(tx, &payload.edgeJobBasePayload, payload.File)
 
-			return err
-		})
-	}
+		return err
+	})
 
 	return txResponse(w, edgeJob, err)
 }
@@ -276,14 +269,28 @@ func (handler *Handler) addAndPersistEdgeJob(tx dataservices.DataStoreTx, edgeJo
 		return errors.New("environments or edge groups are mandatory for an Edge job")
 	}
 
-	for endpointID := range endpointsMap {
-		endpoint, err := tx.Endpoint().Endpoint(endpointID)
-		if err != nil {
-			return err
-		}
+	return tx.EdgeJob().CreateWithID(edgeJob.ID, edgeJob)
+}
 
-		handler.ReverseTunnelService.AddEdgeJob(endpoint, edgeJob)
+// @id EdgeJobCreate
+// @summary Create an EdgeJob
+// @description **Access policy**: administrator
+// @tags edge_jobs
+// @security ApiKeyAuth
+// @security jwt
+// @produce json
+// @param method query string true "Creation Method" Enums(file, string)
+// @param body body object true "for body documentation see the relevant /edge_jobs/create/{method} endpoint"
+// @success 200 {object} portainer.EdgeGroup
+// @failure 503 "Edge compute features are disabled"
+// @failure 500
+// @deprecated
+// @router /edge_jobs [post]
+func deprecatedEdgeJobCreateUrlParser(w http.ResponseWriter, r *http.Request) (string, *httperror.HandlerError) {
+	method, err := request.RetrieveQueryParameter(r, "method", false)
+	if err != nil {
+		return "", httperror.BadRequest("Invalid query parameter: method. Valid values are: file or string", err)
 	}
 
-	return tx.EdgeJob().Create(edgeJob.ID, edgeJob)
+	return "/edge_jobs/create/" + method, nil
 }

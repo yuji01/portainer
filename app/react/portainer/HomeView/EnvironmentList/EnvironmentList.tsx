@@ -10,15 +10,15 @@ import {
   EnvironmentStatus,
   PlatformType,
   EdgeTypes,
+  EnvironmentGroupId,
 } from '@/react/portainer/environments/types';
-import { EnvironmentGroupId } from '@/react/portainer/environments/environment-groups/types';
 import {
   refetchIfAnyOffline,
   useEnvironmentList,
 } from '@/react/portainer/environments/queries/useEnvironmentList';
 import { useGroups } from '@/react/portainer/environments/environment-groups/queries';
 import { EnvironmentsQueryParams } from '@/react/portainer/environments/environment.service';
-import { useUser } from '@/react/hooks/useUser';
+import { useIsPureAdmin } from '@/react/hooks/useUser';
 import { isBE } from '@/react/portainer/feature-flags/feature-flags.service';
 import { environmentStore } from '@/react/hooks/current-environment-store';
 
@@ -36,6 +36,7 @@ import { NoEnvironmentsInfoPanel } from './NoEnvironmentsInfoPanel';
 import { UpdateBadge } from './UpdateBadge';
 import { EnvironmentListFilters } from './EnvironmentListFilters';
 import { AMTButton } from './AMTButton/AMTButton';
+import { ListSortType } from './SortbySelector';
 
 interface Props {
   onClickBrowse(environment: Environment): void;
@@ -45,7 +46,7 @@ interface Props {
 const storageKey = 'home_endpoints';
 
 export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
-  const { isAdmin } = useUser();
+  const isPureAdmin = useIsPureAdmin();
   const currentEnvStore = useStore(environmentStore);
 
   const [platformTypes, setPlatformTypes] = useHomePageFilter<PlatformType[]>(
@@ -68,7 +69,9 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
     'group',
     []
   );
-  const [sortByFilter, setSortByFilter] = useSearchBarState('sortBy');
+  const [sortByFilter, setSortByFilter] = useHomePageFilter<
+    ListSortType | undefined
+  >('sortBy', undefined);
   const [sortByDescending, setSortByDescending] = useHomePageFilter(
     'sortOrder',
     false
@@ -126,7 +129,7 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
       pageLimit,
       ...queryWithSort,
     },
-    refetchIfAnyOffline
+    { refetchInterval: refetchIfAnyOffline }
   );
 
   useEffect(() => {
@@ -135,7 +138,9 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
 
   return (
     <>
-      {totalAvailable === 0 && <NoEnvironmentsInfoPanel isAdmin={isAdmin} />}
+      {totalAvailable === 0 && (
+        <NoEnvironmentsInfoPanel isAdmin={isPureAdmin} />
+      )}
 
       <TableContainer>
         <div className="px-4">
@@ -157,7 +162,7 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
                 placeholder="Search by name, group, tag, status, URL..."
                 data-cy="home-endpointsSearchInput"
               />
-              {isAdmin && (
+              {isPureAdmin && (
                 <Button
                   onClick={onRefresh}
                   data-cy="home-refreshEndpointsButton"
@@ -207,6 +212,7 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
           <div
             className="blocklist mt-5 !space-y-2 !p-0"
             data-cy="home-endpointList"
+            role="list"
           >
             {renderItems(
               isLoading,
@@ -229,14 +235,14 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
               ))
             )}
           </div>
-          <TableFooter>
+          <TableFooter className="!border-t-0">
             <PaginationControls
               className="!mr-0"
               showAll={totalCount <= 100}
               pageLimit={pageLimit}
               page={page}
               onPageChange={setPage}
-              totalCount={totalCount}
+              pageCount={Math.ceil(totalCount / pageLimit)}
               onPageLimitChange={setPageLimit}
             />
           </TableFooter>
@@ -259,13 +265,18 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
         EnvironmentType.AgentOnDocker,
         EnvironmentType.EdgeAgentOnDocker,
       ],
+      // for podman keep the env type as docker (the containerEngine distinguishes podman from docker)
+      [PlatformType.Podman]: [
+        EnvironmentType.Docker,
+        EnvironmentType.AgentOnDocker,
+        EnvironmentType.EdgeAgentOnDocker,
+      ],
       [PlatformType.Azure]: [EnvironmentType.Azure],
       [PlatformType.Kubernetes]: [
         EnvironmentType.KubernetesLocal,
         EnvironmentType.AgentOnKubernetes,
         EnvironmentType.EdgeAgentOnKubernetes,
       ],
-      [PlatformType.Nomad]: [EnvironmentType.EdgeAgentOnNomad],
     };
 
     const typesByConnection = {
@@ -342,7 +353,7 @@ export function EnvironmentList({ onClickBrowse, onRefresh }: Props) {
     setConnectionTypes([]);
   }
 
-  function sortOnchange(value: string) {
+  function sortOnchange(value?: 'Name' | 'Group' | 'Status') {
     setSortByFilter(value);
     setSortByButton(!!value);
   }

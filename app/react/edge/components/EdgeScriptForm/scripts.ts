@@ -35,10 +35,10 @@ export const commandsTabs: Record<string, CommandTab> = {
     label: 'Docker Standalone',
     command: buildLinuxStandaloneCommand,
   },
-  nomadLinux: {
-    id: 'nomad',
-    label: 'Nomad',
-    command: buildLinuxNomadCommand,
+  podmanLinux: {
+    id: 'podman',
+    label: 'Podman',
+    command: buildLinuxPodmanCommand,
   },
   swarmWindows: {
     id: 'swarm',
@@ -82,6 +82,45 @@ docker run -d \\
   -v /:/host \\
   -v portainer_agent_data:/data \\
   --restart always \\
+  ${env} \\
+  --name portainer_edge_agent \\
+  portainer/agent:${agentVersion}
+  `;
+}
+
+function buildLinuxPodmanCommand(
+  agentVersion: string,
+  edgeKey: string,
+  properties: ScriptFormValues,
+  useAsyncMode: boolean,
+  edgeId?: string,
+  agentSecret?: string
+) {
+  const { allowSelfSignedCertificates, edgeIdGenerator, envVars } = properties;
+
+  const env = buildDockerEnvVars(envVars, [
+    ...buildDefaultDockerEnvVars(
+      edgeKey,
+      allowSelfSignedCertificates,
+      !edgeIdGenerator ? edgeId : undefined,
+      agentSecret,
+      useAsyncMode
+    ),
+    ...metaEnvVars(properties),
+  ]);
+
+  return `${
+    edgeIdGenerator ? `PORTAINER_EDGE_ID=$(${edgeIdGenerator}) \n\n` : ''
+  }\
+sudo systemctl enable --now podman.socket
+sudo podman volume create portainer
+sudo podman run -d \\
+  -v /run/podman/podman.sock:/var/run/docker.sock \\
+  -v /var/lib/containers/storage/volumes:/var/lib/docker/volumes \\
+  -v /:/host \\
+  -v portainer_agent_data:/data \\
+  --restart always \\
+  --privileged \\
   ${env} \\
   --name portainer_edge_agent \\
   portainer/agent:${agentVersion}
@@ -235,38 +274,6 @@ export function buildLinuxKubernetesCommand(
   const selfSigned = allowSelfSignedCertificates ? '1' : '0';
 
   return `${idEnvVar}curl https://downloads.portainer.io/ee${agentShortVersion}/portainer-edge-agent-setup.sh | bash -s -- "${edgeIdVar}" "${edgeKey}" "${selfSigned}" "${agentSecret}" "${allEnvVars}"`;
-}
-
-export function buildLinuxNomadCommand(
-  agentVersion: string,
-  edgeKey: string,
-  properties: ScriptFormValues,
-  useAsyncMode: boolean,
-  edgeId?: string,
-  agentSecret?: string
-) {
-  const {
-    allowSelfSignedCertificates,
-    edgeIdGenerator,
-    envVars,
-    nomadToken = '',
-    tlsEnabled,
-  } = properties;
-
-  const agentShortVersion = getAgentShortVersion(agentVersion);
-
-  const allEnvVars = buildEnvVars(
-    envVars,
-    _.compact([useAsyncMode && 'EDGE_ASYNC=1', ...metaEnvVars(properties)])
-  );
-
-  const selfSigned = allowSelfSignedCertificates ? '1' : '0';
-  const idEnvVar = edgeIdGenerator
-    ? `PORTAINER_EDGE_ID=$(${edgeIdGenerator}) \n\n`
-    : '';
-  const edgeIdVar = !edgeIdGenerator && edgeId ? edgeId : '$PORTAINER_EDGE_ID';
-
-  return `${idEnvVar}curl https://downloads.portainer.io/ee${agentShortVersion}/portainer-edge-agent-nomad-setup.sh | bash -s -- "${nomadToken}" "${edgeIdVar}" "${edgeKey}" "${selfSigned}" "${allEnvVars}" "${agentSecret}" "${tlsEnabled}"`;
 }
 
 function buildDockerEnvVars(envVars: string, moreVars: string[]) {

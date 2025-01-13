@@ -3,9 +3,8 @@ package stacks
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/filesystem"
 	"github.com/portainer/portainer/api/git/update"
@@ -13,6 +12,8 @@ import (
 	"github.com/portainer/portainer/api/stacks/deployments"
 	"github.com/portainer/portainer/api/stacks/stackbuilders"
 	"github.com/portainer/portainer/api/stacks/stackutils"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
 
 	"github.com/asaskevich/govalidator"
 	"github.com/pkg/errors"
@@ -31,11 +32,11 @@ type composeStackFromFileContentPayload struct {
 }
 
 func (payload *composeStackFromFileContentPayload) Validate(r *http.Request) error {
-	if govalidator.IsNull(payload.Name) {
+	if len(payload.Name) == 0 {
 		return errors.New("Invalid stack name")
 	}
 
-	if govalidator.IsNull(payload.StackFileContent) {
+	if len(payload.StackFileContent) == 0 {
 		return errors.New("Invalid stack file content")
 	}
 	return nil
@@ -61,13 +62,13 @@ func (handler *Handler) checkAndCleanStackDupFromSwarm(w http.ResponseWriter, r 
 		deployments.StopAutoupdate(stack.ID, stack.AutoUpdate.JobID, handler.Scheduler)
 	}
 
-	err = handler.DataStore.Stack().DeleteStack(stack.ID)
+	err = handler.DataStore.Stack().Delete(stack.ID)
 	if err != nil {
 		return err
 	}
 
 	if resourceControl != nil {
-		err = handler.DataStore.ResourceControl().DeleteResourceControl(resourceControl.ID)
+		err = handler.DataStore.ResourceControl().Delete(resourceControl.ID)
 		if err != nil {
 			log.Error().
 				Str("stack", fmt.Sprintf("%+v", stack)).
@@ -171,7 +172,7 @@ type composeStackFromGitRepositoryPayload struct {
 	ComposeFile string `example:"docker-compose.yml" default:"docker-compose.yml"`
 	// Applicable when deploying with multiple stack files
 	AdditionalFiles []string `example:"[nz.compose.yml, uat.compose.yml]"`
-	// Optional auto update configuration
+	// Optional GitOps update configuration
 	AutoUpdate *portainer.AutoUpdateSettings
 	// A list of environment variables used during stack deployment
 	Env []portainer.Pair
@@ -201,13 +202,13 @@ func createStackPayloadFromComposeGitPayload(name, repoUrl, repoReference, repoU
 }
 
 func (payload *composeStackFromGitRepositoryPayload) Validate(r *http.Request) error {
-	if govalidator.IsNull(payload.Name) {
+	if len(payload.Name) == 0 {
 		return errors.New("Invalid stack name")
 	}
-	if govalidator.IsNull(payload.RepositoryURL) || !govalidator.IsURL(payload.RepositoryURL) {
+	if len(payload.RepositoryURL) == 0 || !govalidator.IsURL(payload.RepositoryURL) {
 		return errors.New("Invalid repository URL. Must correspond to a valid URL format")
 	}
-	if payload.RepositoryAuthentication && govalidator.IsNull(payload.RepositoryPassword) {
+	if payload.RepositoryAuthentication && len(payload.RepositoryPassword) == 0 {
 		return errors.New("Invalid repository credentials. Password must be specified when authentication is enabled")
 	}
 	if err := update.ValidateAutoUpdateSettings(payload.AutoUpdate); err != nil {
@@ -229,6 +230,7 @@ func (payload *composeStackFromGitRepositoryPayload) Validate(r *http.Request) e
 // @param body body composeStackFromGitRepositoryPayload true "stack config"
 // @success 200 {object} portainer.Stack
 // @failure 400 "Invalid request"
+// @failure 409 "Stack name or webhook ID already exists"
 // @failure 500 "Server error"
 // @router /stacks/create/standalone/repository [post]
 func (handler *Handler) createComposeStackFromGitRepository(w http.ResponseWriter, r *http.Request, endpoint *portainer.Endpoint, userID portainer.UserID) *httperror.HandlerError {
@@ -272,7 +274,7 @@ func (handler *Handler) createComposeStackFromGitRepository(w http.ResponseWrite
 			return httperror.InternalServerError("Unable to check for webhook ID collision", err)
 		}
 		if !isUnique {
-			return &httperror.HandlerError{StatusCode: http.StatusConflict, Message: fmt.Sprintf("Webhook ID: %s already exists", payload.AutoUpdate.Webhook), Err: stackutils.ErrWebhookIDAlreadyExists}
+			return httperror.Conflict(fmt.Sprintf("Webhook ID: %s already exists", payload.AutoUpdate.Webhook), stackutils.ErrWebhookIDAlreadyExists)
 		}
 	}
 
@@ -282,7 +284,7 @@ func (handler *Handler) createComposeStackFromGitRepository(w http.ResponseWrite
 	}
 
 	stackPayload := createStackPayloadFromComposeGitPayload(payload.Name,
-		payload.RepositoryURL,
+		strings.TrimSuffix(payload.RepositoryURL, "/"),
 		payload.RepositoryReferenceName,
 		payload.RepositoryUsername,
 		payload.RepositoryPassword,

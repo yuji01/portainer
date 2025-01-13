@@ -1,4 +1,4 @@
-import { EditorType } from '@/react/edge/edge-stacks/types';
+import { DeploymentType } from '@/react/edge/edge-stacks/types';
 
 import { BoxSelector } from '@@/BoxSelector';
 import { BoxSelectorOption } from '@@/BoxSelector/types';
@@ -8,11 +8,12 @@ import {
 } from '@@/BoxSelector/common-options/deployment-methods';
 
 interface Props {
-  value: number;
-  onChange(value: number): void;
+  value: DeploymentType;
+  onChange(value: DeploymentType): void;
   hasDockerEndpoint: boolean;
   hasKubeEndpoint: boolean;
   allowKubeToSelectCompose?: boolean;
+  error?: string;
 }
 
 export function EdgeStackDeploymentTypeSelector({
@@ -21,12 +22,13 @@ export function EdgeStackDeploymentTypeSelector({
   hasDockerEndpoint,
   hasKubeEndpoint,
   allowKubeToSelectCompose,
+  error,
 }: Props) {
-  const deploymentOptions: BoxSelectorOption<number>[] = [
+  const deploymentOptions: BoxSelectorOption<DeploymentType>[] = [
     {
       ...compose,
-      value: EditorType.Compose,
-      disabled: () => (allowKubeToSelectCompose ? false : hasKubeEndpoint),
+      value: DeploymentType.Compose,
+      disabled: () => !allowKubeToSelectCompose && hasKubeEndpoint,
       tooltip: () =>
         hasKubeEndpoint
           ? 'Cannot use this option with Edge Kubernetes environments'
@@ -34,7 +36,7 @@ export function EdgeStackDeploymentTypeSelector({
     },
     {
       ...kubernetes,
-      value: EditorType.Kubernetes,
+      value: DeploymentType.Kubernetes,
       disabled: () => hasDockerEndpoint,
       tooltip: () =>
         hasDockerEndpoint
@@ -52,6 +54,7 @@ export function EdgeStackDeploymentTypeSelector({
         value={value}
         options={deploymentOptions}
         onChange={onChange}
+        error={error}
       />
     </>
   );

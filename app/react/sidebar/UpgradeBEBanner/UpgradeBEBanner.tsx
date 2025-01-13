@@ -2,7 +2,7 @@ import { ArrowUpCircle } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
 
-import { useAnalytics } from '@/angulartics.matomo/analytics-services';
+import { useAnalytics } from '@/react/hooks/useAnalytics';
 import { useNodesCount } from '@/react/portainer/system/useNodesCount';
 import {
   ContainerPlatform,
@@ -29,7 +29,7 @@ const enabledPlatforms: Array<ContainerPlatform> = [
 
 function UpgradeBEBanner() {
   const {
-    isAdmin,
+    isPureAdmin,
     user: { Id },
   } = useCurrentUser();
 
@@ -59,7 +59,7 @@ function UpgradeBEBanner() {
 
   if (
     !enabledPlatforms.includes(systemInfo.platform) &&
-    process.env.NODE_ENV !== 'development'
+    process.env.FORCE_SHOW_UPGRADE_BANNER !== ''
   ) {
     return null;
   }
@@ -78,8 +78,7 @@ function UpgradeBEBanner() {
         <ArrowUpCircle
           className={clsx(
             'lucide text-lg',
-            'fill-warning-6 stroke-[#023959] th-dark:stroke-black',
-            'th-highcontrast:fill-warning-6  th-highcontrast:stroke-black'
+            'fill-gray-6 stroke-[#023959] th-dark:stroke-black th-highcontrast:stroke-black'
           )}
         />
         {isSidebarOpen && <>Upgrade to Business Edition</>}
@@ -91,7 +90,7 @@ function UpgradeBEBanner() {
 
   function handleClick() {
     trackEvent(
-      isAdmin ? 'portainer-upgrade-admin' : 'portainer-upgrade-non-admin',
+      isPureAdmin ? 'portainer-upgrade-admin' : 'portainer-upgrade-non-admin',
       {
         category: 'portainer',
         metadata,

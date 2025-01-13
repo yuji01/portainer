@@ -1,5 +1,3 @@
-import { Plus } from 'lucide-react';
-
 import { FeatureId } from '@/react/portainer/feature-flags/enums';
 
 import { BETeaserButton } from '@@/BETeaserButton';
@@ -42,7 +40,7 @@ export function AnnotationsBeTeaser() {
           message="Allows specifying of annotations on this resource."
           featureId={FeatureId.K8S_ANNOTATIONS}
           buttonClassName="!ml-0"
-          icon={Plus}
+          data-cy="annotations-be-teaser"
         />
       </div>
     </div>

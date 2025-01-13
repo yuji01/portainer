@@ -1,43 +1,41 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { ColumnDef } from '@tanstack/react-table';
 
-import { Button } from '@@/buttons';
+import { CollapseExpandButton } from '../CollapseExpandButton';
 
-export function buildExpandColumn<
-  T extends Record<string, unknown>
->(): ColumnDef<T> {
+import { DefaultType } from './types';
+
+export function buildExpandColumn<T extends DefaultType>(): ColumnDef<T> {
   return {
     id: 'expand',
     header: ({ table }) => {
-      const hasExpandableItems = table.getExpandedRowModel().rows.length > 0;
+      const hasExpandableItems = table.getCanSomeRowsExpand();
 
       return (
         hasExpandableItems && (
-          <Button
+          <CollapseExpandButton
+            isExpanded={table.getIsAllRowsExpanded()}
             onClick={table.getToggleAllRowsExpandedHandler()}
-            color="none"
-            icon={table.getIsAllRowsExpanded() ? ChevronDown : ChevronUp}
+            data-cy="expand-all-rows-button"
+            aria-label={
+              table.getIsAllRowsExpanded()
+                ? 'Collapse all rows'
+                : 'Expand all rows'
+            }
           />
         )
       );
     },
     cell: ({ row }) =>
       row.getCanExpand() && (
-        <Button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            row.toggleExpanded();
-          }}
-          color="none"
-          icon={row.getIsExpanded() ? ChevronDown : ChevronUp}
+        <CollapseExpandButton
+          isExpanded={row.getIsExpanded()}
+          onClick={row.getToggleExpandedHandler()}
+          data-cy={`expand-row-button_${row.index}`}
         />
       ),
     enableColumnFilter: false,
     enableGlobalFilter: false,
     enableHiding: false,
-
     meta: {
       width: 40,
     },

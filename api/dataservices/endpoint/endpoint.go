@@ -5,6 +5,9 @@ import (
 	"time"
 
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/dataservices"
+
+	"github.com/rs/zerolog/log"
 )
 
 // BucketName represents the name of the bucket where this service stores data.
@@ -144,15 +147,35 @@ func (service *Service) Create(endpoint *portainer.Endpoint) error {
 	})
 }
 
+func (service *Service) EndpointsByTeamID(teamID portainer.TeamID) ([]portainer.Endpoint, error) {
+	var endpoints = make([]portainer.Endpoint, 0)
+
+	return endpoints, service.connection.GetAll(
+		BucketName,
+		&portainer.Endpoint{},
+		dataservices.FilterFn(&endpoints, func(e portainer.Endpoint) bool {
+			for t := range e.TeamAccessPolicies {
+				if t == teamID {
+					return true
+				}
+			}
+
+			return false
+		}),
+	)
+}
+
 // GetNextIdentifier returns the next identifier for an environment(endpoint).
 func (service *Service) GetNextIdentifier() int {
 	var identifier int
 
-	service.connection.UpdateTx(func(tx portainer.Transaction) error {
+	if err := service.connection.UpdateTx(func(tx portainer.Transaction) error {
 		identifier = service.Tx(tx).GetNextIdentifier()
 
 		return nil
-	})
+	}); err != nil {
+		log.Error().Err(err).Str("bucket", BucketName).Msg("could not get the next identifier")
+	}
 
 	return identifier
 }

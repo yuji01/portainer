@@ -9,7 +9,7 @@ import (
 
 // Confirm starts a rollback db cli application
 func Confirm(message string) (bool, error) {
-	fmt.Printf("%s [y/N]", message)
+	fmt.Printf("%s [y/N] ", message)
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -19,7 +19,5 @@ func Confirm(message string) (bool, error) {
 	}
 
 	answer = strings.ReplaceAll(answer, "\n", "")
-	answer = strings.ToLower(answer)
-
-	return answer == "y" || answer == "yes", nil
+	return strings.EqualFold(answer, "y") || strings.EqualFold(answer, "yes"), nil
 }

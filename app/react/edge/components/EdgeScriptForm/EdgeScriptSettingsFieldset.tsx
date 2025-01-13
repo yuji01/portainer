@@ -10,21 +10,19 @@ import { TagSelector } from '@@/TagSelector';
 
 import { EdgeGroupsSelector } from '../../edge-stacks/components/EdgeGroupsSelector';
 
-import { NomadTokenField } from './NomadTokenField';
 import { ScriptFormValues } from './types';
 
 interface Props {
-  isNomadTokenVisible?: boolean;
   hideIdGetter?: boolean;
   showMetaFields?: boolean;
 }
 
 export function EdgeScriptSettingsFieldset({
-  isNomadTokenVisible,
   hideIdGetter,
   showMetaFields,
 }: Props) {
-  const { values, setFieldValue } = useFormikContext<ScriptFormValues>();
+  const { values, setFieldValue, errors } =
+    useFormikContext<ScriptFormValues>();
 
   return (
     <>
@@ -50,15 +48,19 @@ export function EdgeScriptSettingsFieldset({
         <>
           <FormControl
             label="Edge ID Generator"
-            tooltip="A bash script one liner that will generate the edge id and will be assigned to the PORTAINER_EDGE_ID environment variable"
+            tooltip="Enter a single-line bash command that generates a unique Edge ID. For example, you can use 'uuidgen' or 'uuid'. The result will be assigned to the 'PORTAINER_EDGE_ID' environment variable."
             inputId="edge-id-generator-input"
+            required
+            errors={errors.edgeIdGenerator}
           >
             <Input
               type="text"
-              name="edgeIdGenerator"
               value={values.edgeIdGenerator}
+              name="edgeIdGenerator"
+              placeholder="e.g. uuidgen"
               id="edge-id-generator-input"
               onChange={(e) => setFieldValue(e.target.name, e.target.value)}
+              data-cy="edge-id-generator-input"
             />
           </FormControl>
           <div className="form-group">
@@ -72,23 +74,6 @@ export function EdgeScriptSettingsFieldset({
         </>
       )}
 
-      {isNomadTokenVisible && (
-        <>
-          <NomadTokenField />
-
-          <div className="form-group">
-            <div className="col-sm-12">
-              <SwitchField
-                label="TLS"
-                labelClass="col-sm-3 col-lg-2"
-                checked={values.tlsEnabled}
-                onChange={(checked) => setFieldValue('tlsEnabled', checked)}
-              />
-            </div>
-          </div>
-        </>
-      )}
-
       <FormControl
         label="Environment variables"
         tooltip="Comma separated list of environment variables that will be sourced from the host where the agent is deployed."
@@ -97,7 +82,7 @@ export function EdgeScriptSettingsFieldset({
         <Field
           name="envVars"
           as={Input}
-          placeholder="foo=bar,myvar"
+          placeholder="e.g. foo=bar"
           id="env-variables-input"
         />
       </FormControl>
@@ -106,6 +91,7 @@ export function EdgeScriptSettingsFieldset({
         <div className="col-sm-12">
           <SwitchField
             checked={values.allowSelfSignedCertificates}
+            data-cy="allow-self-signed-certs-switch"
             onChange={(value) =>
               setFieldValue('allowSelfSignedCertificates', value)
             }

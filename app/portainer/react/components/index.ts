@@ -5,14 +5,23 @@ import { withCurrentUser } from '@/react-tools/withCurrentUser';
 import { withReactQuery } from '@/react-tools/withReactQuery';
 import { withUIRouter } from '@/react-tools/withUIRouter';
 import { AnnotationsBeTeaser } from '@/react/kubernetes/annotations/AnnotationsBeTeaser';
+import { withFormValidation } from '@/react-tools/withFormValidation';
+import { GroupAssociationTable } from '@/react/portainer/environments/environment-groups/components/GroupAssociationTable';
+import { AssociatedEnvironmentsSelector } from '@/react/portainer/environments/environment-groups/components/AssociatedEnvironmentsSelector';
+import { withControlledInput } from '@/react-tools/withControlledInput';
 
+import {
+  EnvironmentVariablesFieldset,
+  EnvironmentVariablesPanel,
+  StackEnvironmentVariablesPanel,
+  envVarValidation,
+} from '@@/form-components/EnvironmentVariablesFieldset';
 import { Icon } from '@@/Icon';
 import { ReactQueryDevtoolsWrapper } from '@@/ReactQueryDevtoolsWrapper';
 import { PageHeader } from '@@/PageHeader';
 import { TagSelector } from '@@/TagSelector';
 import { Loading } from '@@/Widget/Loading';
 import { PasswordCheckHint } from '@@/PasswordCheckHint';
-import { ViewLoading } from '@@/ViewLoading';
 import { Tooltip } from '@@/Tip/Tooltip';
 import { Badge } from '@@/Badge';
 import { TableColumnHeaderAngular } from '@@/datatables/TableHeaderCell';
@@ -21,11 +30,15 @@ import { SearchBar } from '@@/datatables/SearchBar';
 import { FallbackImage } from '@@/FallbackImage';
 import { BadgeIcon } from '@@/BadgeIcon';
 import { TeamsSelector } from '@@/TeamsSelector';
+import { TerminalTooltip } from '@@/TerminalTooltip';
 import { PortainerSelect } from '@@/form-components/PortainerSelect';
 import { Slider } from '@@/form-components/Slider';
 import { TagButton } from '@@/TagButton';
 import { BETeaserButton } from '@@/BETeaserButton';
 import { CodeEditor } from '@@/CodeEditor';
+import { HelpLink } from '@@/HelpLink';
+import { TextTip } from '@@/Tip/TextTip';
+import { InlineLoader } from '@@/InlineLoader/InlineLoader';
 
 import { fileUploadField } from './file-upload-field';
 import { switchField } from './switch-field';
@@ -34,18 +47,24 @@ import { gitFormModule } from './git-form';
 import { settingsModule } from './settings';
 import { accessControlModule } from './access-control';
 import { environmentsModule } from './environments';
-import { envListModule } from './environments-list-view-components';
 import { registriesModule } from './registries';
+import { accountModule } from './account';
+import { usersModule } from './users';
+import { activityLogsModule } from './activity-logs';
+import { rbacModule } from './rbac';
 
-export const componentsModule = angular
+export const ngModule = angular
   .module('portainer.app.react.components', [
     accessControlModule,
     customTemplatesModule,
-    envListModule,
     environmentsModule,
     gitFormModule,
     registriesModule,
     settingsModule,
+    accountModule,
+    usersModule,
+    activityLogsModule,
+    rbacModule,
   ])
   .component(
     'tagSelector',
@@ -53,6 +72,7 @@ export const componentsModule = angular
       'allowCreate',
       'onChange',
       'value',
+      'errors',
     ])
   )
   .component(
@@ -63,8 +83,8 @@ export const componentsModule = angular
       'message',
       'buttonText',
       'className',
-      'icon',
       'buttonClassName',
+      'data-cy',
     ])
   )
   .component(
@@ -74,8 +94,9 @@ export const componentsModule = angular
 
   .component(
     'portainerTooltip',
-    r2a(Tooltip, ['message', 'position', 'className', 'setHtmlMessage'])
+    r2a(Tooltip, ['message', 'position', 'className', 'setHtmlMessage', 'size'])
   )
+  .component('terminalTooltip', r2a(TerminalTooltip, []))
   .component('badge', r2a(Badge, ['type', 'className']))
   .component('fileUploadField', fileUploadField)
   .component('porSwitchField', switchField)
@@ -96,7 +117,6 @@ export const componentsModule = angular
       'isSortedDesc',
     ])
   )
-  .component('viewLoading', r2a(ViewLoading, ['message']))
   .component(
     'pageHeader',
     r2a(withUIRouter(withReactQuery(withCurrentUser(PageHeader))), [
@@ -110,10 +130,21 @@ export const componentsModule = angular
   )
   .component(
     'fallbackImage',
-    r2a(FallbackImage, ['src', 'fallbackIcon', 'alt', 'size', 'className'])
+    r2a(FallbackImage, ['src', 'fallbackIcon', 'alt', 'className'])
   )
-  .component('prIcon', r2a(Icon, ['className', 'icon', 'mode', 'size']))
-  .component('reactQueryDevTools', r2a(ReactQueryDevtoolsWrapper, []))
+  .component('prIcon', r2a(Icon, ['className', 'icon', 'mode', 'size', 'spin']))
+  .component(
+    'reactQueryDevTools',
+    r2a(withReactQuery(ReactQueryDevtoolsWrapper), [])
+  )
+  .component(
+    'helpLink',
+    r2a(withUIRouter(withReactQuery(HelpLink)), [
+      'docLink',
+      'target',
+      'children',
+    ])
+  )
   .component(
     'dashboardItem',
     r2a(DashboardItem, [
@@ -121,11 +152,13 @@ export const componentsModule = angular
       'type',
       'value',
       'to',
+      'params',
       'children',
       'pluralType',
       'isLoading',
       'isRefetching',
-      'dataCy',
+      'data-cy',
+      'iconClass',
     ])
   )
   .component(
@@ -139,7 +172,7 @@ export const componentsModule = angular
       'className',
     ])
   )
-  .component('badgeIcon', r2a(BadgeIcon, ['icon', 'size']))
+  .component('badgeIcon', r2a(BadgeIcon, ['icon', 'size', 'iconClass']))
   .component(
     'teamsSelector',
     r2a(TeamsSelector, [
@@ -168,6 +201,9 @@ export const componentsModule = angular
       'isMulti',
       'isClearable',
       'components',
+      'isLoading',
+      'noOptionsMessage',
+      'aria-label',
     ])
   )
   .component(
@@ -180,19 +216,82 @@ export const componentsModule = angular
       'onChange',
       'visibleTooltip',
       'dataCy',
+      'disabled',
     ])
   )
-
   .component(
     'reactCodeEditor',
     r2a(CodeEditor, [
       'id',
       'placeholder',
-      'yaml',
+      'type',
       'readonly',
       'onChange',
       'value',
       'height',
+      'data-cy',
+      'versions',
+      'onVersionChange',
     ])
   )
-  .component('annotationsBeTeaser', r2a(AnnotationsBeTeaser, [])).name;
+  .component(
+    'textTip',
+    r2a(TextTip, [
+      'className',
+      'color',
+      'icon',
+      'inline',
+      'children',
+      'childrenWrapperClassName',
+    ])
+  )
+  .component(
+    'inlineLoader',
+    r2a(InlineLoader, ['children', 'className', 'size'])
+  )
+  .component(
+    'groupAssociationTable',
+    r2a(withReactQuery(GroupAssociationTable), [
+      'onClickRow',
+      'query',
+      'title',
+      'data-cy',
+    ])
+  )
+  .component('annotationsBeTeaser', r2a(AnnotationsBeTeaser, []))
+  .component(
+    'associatedEndpointsSelector',
+    r2a(withReactQuery(AssociatedEnvironmentsSelector), ['onChange', 'value'])
+  );
+
+export const componentsModule = ngModule.name;
+
+withFormValidation(
+  ngModule,
+  withControlledInput(EnvironmentVariablesFieldset, { values: 'onChange' }),
+  'environmentVariablesFieldset',
+  ['canUndoDelete'],
+  envVarValidation
+);
+
+withFormValidation(
+  ngModule,
+  withControlledInput(EnvironmentVariablesPanel, { values: 'onChange' }),
+  'environmentVariablesPanel',
+  ['explanation', 'showHelpMessage', 'isFoldable'],
+  envVarValidation
+);
+
+withFormValidation(
+  ngModule,
+  withUIRouter(
+    withReactQuery(
+      withControlledInput(StackEnvironmentVariablesPanel, {
+        values: 'onChange',
+      })
+    )
+  ),
+  'stackEnvironmentVariablesPanel',
+  ['showHelpMessage', 'isFoldable'],
+  envVarValidation
+);

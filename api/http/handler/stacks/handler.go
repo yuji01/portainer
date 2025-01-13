@@ -7,13 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/docker/docker/api/types"
-	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
-	httperror "github.com/portainer/libhttp/error"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
-	"github.com/portainer/portainer/api/docker"
+	dockerclient "github.com/portainer/portainer/api/docker/client"
+	"github.com/portainer/portainer/api/docker/consts"
+	"github.com/portainer/portainer/api/http/middlewares"
 	"github.com/portainer/portainer/api/http/security"
 	"github.com/portainer/portainer/api/internal/authorization"
 	"github.com/portainer/portainer/api/internal/endpointutils"
@@ -21,16 +19,22 @@ import (
 	"github.com/portainer/portainer/api/scheduler"
 	"github.com/portainer/portainer/api/stacks/deployments"
 	"github.com/portainer/portainer/api/stacks/stackutils"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 )
 
 // Handler is the HTTP handler used to handle stack operations.
 type Handler struct {
 	stackCreationMutex *sync.Mutex
 	stackDeletionMutex *sync.Mutex
-	requestBouncer     *security.RequestBouncer
+	requestBouncer     security.BouncerService
 	*mux.Router
 	DataStore               dataservices.DataStore
-	DockerClientFactory     *docker.ClientFactory
+	DockerClientFactory     *dockerclient.ClientFactory
 	FileService             portainer.FileService
 	GitService              portainer.GitService
 	SwarmStackManager       portainer.SwarmStackManager
@@ -44,11 +48,11 @@ type Handler struct {
 func stackExistsError(name string) *httperror.HandlerError {
 	msg := fmt.Sprintf("A stack with the normalized name '%s' already exists", name)
 	err := errors.New(msg)
-	return &httperror.HandlerError{StatusCode: http.StatusConflict, Message: msg, Err: err}
+	return httperror.Conflict(msg, err)
 }
 
 // NewHandler creates a handler to manage stack operations.
-func NewHandler(bouncer *security.RequestBouncer) *Handler {
+func NewHandler(bouncer security.BouncerService) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		stackCreationMutex: &sync.Mutex{},
@@ -59,6 +63,8 @@ func NewHandler(bouncer *security.RequestBouncer) *Handler {
 	h.Handle("/stacks/create/{type}/{method}",
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackCreate))).Methods(http.MethodPost)
 	h.Handle("/stacks",
+		bouncer.AuthenticatedAccess(middlewares.Deprecated(h, deprecatedStackCreateUrlParser))).Methods(http.MethodPost) // Deprecated
+	h.Handle("/stacks",
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackList))).Methods(http.MethodGet)
 	h.Handle("/stacks/{id}",
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackInspect))).Methods(http.MethodGet)
@@ -66,6 +72,8 @@ func NewHandler(bouncer *security.RequestBouncer) *Handler {
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackDelete))).Methods(http.MethodDelete)
 	h.Handle("/stacks/{id}/associate",
 		bouncer.AdminAccess(httperror.LoggerHandler(h.stackAssociate))).Methods(http.MethodPut)
+	h.Handle("/stacks/name/{name}",
+		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackDeleteKubernetesByName))).Methods(http.MethodDelete)
 	h.Handle("/stacks/{id}",
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackUpdate))).Methods(http.MethodPut)
 	h.Handle("/stacks/{id}/git",
@@ -81,13 +89,13 @@ func NewHandler(bouncer *security.RequestBouncer) *Handler {
 	h.Handle("/stacks/{id}/stop",
 		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.stackStop))).Methods(http.MethodPost)
 	h.Handle("/stacks/webhooks/{webhookID}",
-		httperror.LoggerHandler(h.webhookInvoke)).Methods(http.MethodPost)
+		bouncer.PublicAccess(httperror.LoggerHandler(h.webhookInvoke))).Methods(http.MethodPost)
 
 	return h
 }
 
 func (handler *Handler) userCanAccessStack(securityContext *security.RestrictedRequestContext, endpointID portainer.EndpointID, resourceControl *portainer.ResourceControl) (bool, error) {
-	user, err := handler.DataStore.User().User(securityContext.UserID)
+	user, err := handler.DataStore.User().Read(securityContext.UserID)
 	if err != nil {
 		return false, err
 	}
@@ -105,7 +113,7 @@ func (handler *Handler) userCanAccessStack(securityContext *security.RestrictedR
 }
 
 func (handler *Handler) userIsAdmin(userID portainer.UserID) (bool, error) {
-	user, err := handler.DataStore.User().User(userID)
+	user, err := handler.DataStore.User().Read(userID)
 	if err != nil {
 		return false, err
 	}
@@ -116,7 +124,7 @@ func (handler *Handler) userIsAdmin(userID portainer.UserID) (bool, error) {
 }
 
 func (handler *Handler) userCanCreateStack(securityContext *security.RestrictedRequestContext, endpointID portainer.EndpointID) (bool, error) {
-	user, err := handler.DataStore.User().User(securityContext.UserID)
+	user, err := handler.DataStore.User().Read(securityContext.UserID)
 	if err != nil {
 		return false, err
 	}
@@ -133,10 +141,10 @@ func (handler *Handler) userCanManageStacks(securityContext *security.Restricted
 	}
 
 	if endpointutils.IsDockerEndpoint(endpoint) && !endpoint.SecuritySettings.AllowStackManagementForRegularUsers {
-		canCreate, err := handler.userCanCreateStack(securityContext, portainer.EndpointID(endpoint.ID))
+		canCreate, err := handler.userCanCreateStack(securityContext, endpoint.ID)
 
 		if err != nil {
-			return false, fmt.Errorf("Failed to get user from the database: %w", err)
+			return false, fmt.Errorf("failed to get user from the database: %w", err)
 		}
 
 		return canCreate, nil
@@ -145,7 +153,7 @@ func (handler *Handler) userCanManageStacks(securityContext *security.Restricted
 }
 
 func (handler *Handler) checkUniqueStackName(endpoint *portainer.Endpoint, name string, stackID portainer.StackID) (bool, error) {
-	stacks, err := handler.DataStore.Stack().Stacks()
+	stacks, err := handler.DataStore.Stack().ReadAll()
 	if err != nil {
 		return false, err
 	}
@@ -157,31 +165,6 @@ func (handler *Handler) checkUniqueStackName(endpoint *portainer.Endpoint, name 
 	}
 
 	return true, nil
-}
-
-func (handler *Handler) checkUniqueStackNameInKubernetes(endpoint *portainer.Endpoint, name string, stackID portainer.StackID, namespace string) (bool, error) {
-	isUniqueStackName, err := handler.checkUniqueStackName(endpoint, name, stackID)
-	if err != nil {
-		return false, err
-	}
-
-	if !isUniqueStackName {
-		// Check if this stack name is really used in the kubernetes.
-		// Because the stack with this name could be removed via kubectl cli outside and the datastore does not be informed of this action.
-		if namespace == "" {
-			namespace = "default"
-		}
-
-		kubeCli, err := handler.KubernetesClientFactory.GetKubeClient(endpoint)
-		if err != nil {
-			return false, err
-		}
-		isUniqueStackName, err = kubeCli.HasStackName(namespace, name)
-		if err != nil {
-			return false, err
-		}
-	}
-	return isUniqueStackName, nil
 }
 
 func (handler *Handler) checkUniqueStackNameInDocker(endpoint *portainer.Endpoint, name string, stackID portainer.StackID, swarmMode bool) (bool, error) {
@@ -209,13 +192,13 @@ func (handler *Handler) checkUniqueStackNameInDocker(endpoint *portainer.Endpoin
 		}
 	}
 
-	containers, err := dockerClient.ContainerList(context.Background(), types.ContainerListOptions{All: true})
+	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: true})
 	if err != nil {
 		return false, err
 	}
 
 	for _, container := range containers {
-		containerNS, ok := container.Labels["com.docker.compose.project"]
+		containerNS, ok := container.Labels[consts.ComposeStackNameLabel]
 
 		if ok && containerNS == name {
 			return false, nil

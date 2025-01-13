@@ -1,12 +1,12 @@
 import { Meta } from '@storybook/react';
 import { Form, Formik } from 'formik';
-import { rest } from 'msw';
+import { http, HttpResponse } from 'msw';
 
 import { withUserProvider } from '@/react/test-utils/withUserProvider';
 import { GitCredential } from '@/react/portainer/account/git-credentials/types';
 
 import { GitForm, buildGitValidationSchema } from './GitForm';
-import { GitFormModel } from './types';
+import { DeployMethod, GitFormModel } from './types';
 
 export default {
   component: GitForm,
@@ -14,28 +14,25 @@ export default {
   parameters: {
     msw: {
       handlers: [
-        rest.get<Array<GitCredential>, { userId: string }>(
+        http.get<{ userId: string }, Array<GitCredential>>(
           '/api/users/:userId/gitcredentials',
-          (req, res, ctx) =>
-            res(
-              ctx.status(200),
-              ctx.json<Array<GitCredential>>([
-                {
-                  id: 1,
-                  name: 'credential-1',
-                  username: 'username-1',
-                  userId: parseInt(req.params.userId, 10),
-                  creationDate: 0,
-                },
-                {
-                  id: 2,
-                  name: 'credential-2',
-                  username: 'username-2',
-                  userId: parseInt(req.params.userId, 10),
-                  creationDate: 0,
-                },
-              ])
-            )
+          ({ params }) =>
+            HttpResponse.json([
+              {
+                id: 1,
+                name: 'credential-1',
+                username: 'username-1',
+                userId: parseInt(params.userId, 10),
+                creationDate: 0,
+              },
+              {
+                id: 2,
+                name: 'credential-2',
+                username: 'username-2',
+                userId: parseInt(params.userId, 10),
+                creationDate: 0,
+              },
+            ])
         ),
       ],
     },
@@ -48,7 +45,7 @@ interface Args {
   isAdditionalFilesFieldVisible: boolean;
   isAuthExplanationVisible: boolean;
   isDockerStandalone: boolean;
-  deployMethod: 'compose' | 'nomad' | 'manifest';
+  deployMethod: DeployMethod;
   isForcePullVisible: boolean;
 }
 
@@ -76,7 +73,7 @@ export function Primary({
   return (
     <Formik
       initialValues={initialValues}
-      validationSchema={() => buildGitValidationSchema([])}
+      validationSchema={() => buildGitValidationSchema([], false, 'compose')}
       onSubmit={() => {}}
     >
       {({ values, errors, setValues }) => (

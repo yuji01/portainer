@@ -1,17 +1,21 @@
 import { EnvironmentId } from '@/react/portainer/environments/types';
+import { AuthorizationMap } from '@/react/portainer/users/RolesView/types';
 
-import { UserId } from './types/user-id';
+import { type UserId } from './types/user-id';
 
 export { type UserId };
 
 export enum Role {
   Admin = 1,
   Standard,
+  EdgeAdmin,
 }
 
-interface AuthorizationMap {
-  [authorization: string]: boolean;
-}
+export const RoleNames: { [key in Role]: string } = {
+  [Role.Admin]: 'administrator',
+  [Role.Standard]: 'user',
+  [Role.EdgeAdmin]: 'edge administrator',
+};
 
 export type User = {
   Id: UserId;
@@ -20,6 +24,7 @@ export type User = {
   EndpointAuthorizations: {
     [endpointId: EnvironmentId]: AuthorizationMap;
   };
+  UseCache: boolean;
   ThemeSettings: {
     color: 'dark' | 'light' | 'highcontrast' | 'auto';
   };

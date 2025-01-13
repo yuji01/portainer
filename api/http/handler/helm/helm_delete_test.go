@@ -1,7 +1,6 @@
 package helm
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,20 +9,20 @@ import (
 	"github.com/portainer/portainer/api/datastore"
 	"github.com/portainer/portainer/api/exec/exectest"
 	"github.com/portainer/portainer/api/http/security"
+	"github.com/portainer/portainer/api/internal/testhelpers"
+	helper "github.com/portainer/portainer/api/internal/testhelpers"
 	"github.com/portainer/portainer/api/jwt"
 	"github.com/portainer/portainer/api/kubernetes"
 	"github.com/portainer/portainer/pkg/libhelm/binary/test"
 	"github.com/portainer/portainer/pkg/libhelm/options"
-	"github.com/stretchr/testify/assert"
 
-	helper "github.com/portainer/portainer/api/internal/testhelpers"
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_helmDelete(t *testing.T) {
 	is := assert.New(t)
 
-	_, store, teardown := datastore.MustNewTestStore(t, true, true)
-	defer teardown()
+	_, store := datastore.MustNewTestStore(t, true, true)
 
 	err := store.Endpoint().Create(&portainer.Endpoint{ID: 1})
 	is.NoError(err, "Error creating environment")
@@ -46,10 +45,10 @@ func Test_helmDelete(t *testing.T) {
 	h.helmPackageManager.Install(options)
 
 	t.Run("helmDelete succeeds with admin user", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodDelete, fmt.Sprintf("/1/kubernetes/helm/%s", options.Name), nil)
+		req := httptest.NewRequest(http.MethodDelete, "/1/kubernetes/helm/"+options.Name, nil)
 		ctx := security.StoreTokenData(req, &portainer.TokenData{ID: 1, Username: "admin", Role: 1})
 		req = req.WithContext(ctx)
-		req.Header.Add("Authorization", "Bearer dummytoken")
+		testhelpers.AddTestSecurityCookie(req, "Bearer dummytoken")
 
 		rr := httptest.NewRecorder()
 		h.ServeHTTP(rr, req)

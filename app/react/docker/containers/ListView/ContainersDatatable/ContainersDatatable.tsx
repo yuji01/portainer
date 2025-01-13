@@ -1,25 +1,30 @@
 import { Box } from 'lucide-react';
 
-import { Environment } from '@/react/portainer/environments/types';
-import type { DockerContainer } from '@/react/docker/containers/types';
+import { ContainerListViewModel } from '@/react/docker/containers/types';
 import { useShowGPUsColumn } from '@/react/docker/containers/utils';
+import { Environment } from '@/react/portainer/environments/types';
 
-import { Table, Datatable } from '@@/datatables';
+import { Datatable, Table } from '@@/datatables';
 import {
-  buildAction,
+  ColumnVisibilityMenu,
+  getColumnVisibilityState,
+} from '@@/datatables/ColumnVisibilityMenu';
+import {
   QuickActionsSettings,
+  buildAction,
 } from '@@/datatables/QuickActionsSettings';
-import { ColumnVisibilityMenu } from '@@/datatables/ColumnVisibilityMenu';
+import { mergeOptions } from '@@/datatables/extend-options/mergeOptions';
+import { withColumnFilters } from '@@/datatables/extend-options/withColumnFilters';
 import { TableSettingsProvider } from '@@/datatables/useTableSettings';
 import { useTableState } from '@@/datatables/useTableState';
 
-import { useContainers } from '../../queries/containers';
+import { useContainers } from '../../queries/useContainers';
 
-import { createStore } from './datatable-store';
-import { ContainersDatatableSettings } from './ContainersDatatableSettings';
-import { useColumns } from './columns';
 import { ContainersDatatableActions } from './ContainersDatatableActions';
+import { ContainersDatatableSettings } from './ContainersDatatableSettings';
 import { RowProvider } from './RowContext';
+import { useColumns } from './columns';
+import { createStore } from './datatable-store';
 
 const storageKey = 'containers';
 const settingsStore = createStore(storageKey);
@@ -45,12 +50,9 @@ export function ContainersDatatable({
   const columns = useColumns(isHostColumnVisible, isGPUsColumnVisible);
   const tableState = useTableState(settingsStore, storageKey);
 
-  const containersQuery = useContainers(
-    environment.Id,
-    true,
-    undefined,
-    tableState.autoRefreshRate * 1000
-  );
+  const containersQuery = useContainers(environment.Id, {
+    autoRefreshRate: tableState.autoRefreshRate * 1000,
+  });
 
   return (
     <RowProvider context={{ environment }}>
@@ -69,43 +71,34 @@ export function ContainersDatatable({
           )}
           isLoading={containersQuery.isLoading}
           isRowSelectable={(row) => !row.original.IsPortainer}
-          initialTableState={{
-            columnVisibility: Object.fromEntries(
-              tableState.hiddenColumns.map((col) => [col, false])
-            ),
-          }}
-          renderTableSettings={(tableInstance) => {
-            const columnsToHide = tableInstance
-              .getAllColumns()
-              .filter((col) => col.getCanHide());
-
-            return (
-              <>
-                <ColumnVisibilityMenu<DockerContainer>
-                  columns={columnsToHide}
-                  onChange={(hiddenColumns) => {
-                    tableState.setHiddenColumns(hiddenColumns);
-                    tableInstance.setColumnVisibility(
-                      Object.fromEntries(
-                        hiddenColumns.map((col) => [col, false])
-                      )
-                    );
-                  }}
-                  value={tableState.hiddenColumns}
+          initialTableState={getColumnVisibilityState(tableState.hiddenColumns)}
+          data-cy="docker-containers-datatable"
+          renderTableSettings={(tableInstance) => (
+            <>
+              <ColumnVisibilityMenu<ContainerListViewModel>
+                table={tableInstance}
+                onChange={(hiddenColumns) => {
+                  tableState.setHiddenColumns(hiddenColumns);
+                }}
+                value={tableState.hiddenColumns}
+              />
+              <Table.SettingsMenu
+                quickActions={<QuickActionsSettings actions={actions} />}
+              >
+                <ContainersDatatableSettings
+                  isRefreshVisible
+                  settings={tableState}
                 />
-                <Table.SettingsMenu
-                  quickActions={<QuickActionsSettings actions={actions} />}
-                >
-                  <ContainersDatatableSettings
-                    isRefreshVisible
-                    settings={tableState}
-                  />
-                </Table.SettingsMenu>
-              </>
-            );
-          }}
+              </Table.SettingsMenu>
+            </>
+          )}
           dataset={containersQuery.data || []}
-          emptyContentLabel="No containers found"
+          extendTableOptions={mergeOptions(
+            withColumnFilters(
+              tableState.columnFilters,
+              tableState.setColumnFilters
+            )
+          )}
         />
       </TableSettingsProvider>
     </RowProvider>

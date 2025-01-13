@@ -3,7 +3,7 @@ import { Users, UserX } from 'lucide-react';
 
 import { User, UserId } from '@/portainer/users/types';
 import { TeamId, TeamRole } from '@/react/portainer/users/teams/types';
-import { useUser } from '@/react/hooks/useUser';
+import { useIsPureAdmin } from '@/react/hooks/useUser';
 import { notifySuccess } from '@/portainer/services/notifications';
 import {
   useRemoveMemberMutation,
@@ -33,10 +33,11 @@ export function TeamMembersList({ users, roles, disabled, teamId }: Props) {
 
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState(10);
-  const [sortBy, setSortBy] = useState({ id: 'name', desc: false });
+  const [sortBy, setSortBy] = useState<
+    { id: string; desc: boolean } | undefined
+  >({ id: 'name', desc: false });
 
-  const { isAdmin } = useUser();
-
+  const isPureAdmin = useIsPureAdmin();
   const rowContext = useMemo<RowContext>(
     () => ({
       getRole(userId: UserId) {
@@ -56,11 +57,12 @@ export function TeamMembersList({ users, roles, disabled, teamId }: Props) {
         titleIcon={Users}
         title="Team members"
         renderTableActions={() =>
-          isAdmin && (
+          isPureAdmin && (
             <Button
               onClick={() => handleRemoveMembers(users.map((user) => user.Id))}
               disabled={disabled || users.length === 0}
               icon={UserX}
+              data-cy="remove-all-users-button"
             >
               Remove all users
             </Button>
@@ -75,12 +77,13 @@ export function TeamMembersList({ users, roles, disabled, teamId }: Props) {
           search,
           setSearch,
         }}
+        data-cy="team-members-datatable"
       />
     </RowProvider>
   );
 
-  function handleSetSort(colId: string, desc: boolean) {
-    setSortBy({ id: colId, desc });
+  function handleSetSort(colId: string | undefined, desc: boolean) {
+    setSortBy(colId ? { id: colId, desc } : undefined);
   }
 
   function handleRemoveMembers(userIds: UserId[]) {

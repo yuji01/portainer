@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" ng-app="<%= name %>" ng-strict-di data-edition="<%= process.env.PORTAINER_EDITION %>">
   <head>
     <meta charset="utf-8" />
@@ -8,19 +8,8 @@
     <meta http-equiv="cache-control" content="no-cache" />
     <meta http-equiv="expires" content="0" />
     <meta http-equiv="pragma" content="no-cache" />
+    <meta name="robots" content="noindex" />
     <base id="base" />
-    <script>
-      if (window.origin == 'file://') {
-        // we are loading the app from a local file as in docker extension
-        document.getElementById('base').href = 'http://localhost:49000/';
-
-        window.ddExtension = true;
-      } else {
-        var path = window.location.pathname.replace(/^\/+|\/+$/g, '');
-        var basePath = path ? '/' + path + '/' : '/';
-        document.getElementById('base').href = basePath;
-      }
-    </script>
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>

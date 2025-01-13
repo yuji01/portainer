@@ -1,7 +1,10 @@
 import { v4 as uuid } from 'uuid';
 import { useReducer, useState } from 'react';
 
-import { Environment } from '@/react/portainer/environments/types';
+import {
+  ContainerEngine,
+  Environment,
+} from '@/react/portainer/environments/types';
 import { EdgeScriptForm } from '@/react/edge/components/EdgeScriptForm';
 import { CommandTab } from '@/react/edge/components/EdgeScriptForm/scripts';
 import { OS, EdgeInfo } from '@/react/edge/components/EdgeScriptForm/types';
@@ -14,15 +17,15 @@ import { EdgeAgentForm } from './EdgeAgentForm';
 interface Props {
   onCreate: (environment: Environment) => void;
   commands: CommandTab[] | Partial<Record<OS, CommandTab[]>>;
-  isNomadTokenVisible?: boolean;
   asyncMode?: boolean;
+  containerEngine?: ContainerEngine;
 }
 
 export function EdgeAgentTab({
   onCreate,
   commands,
-  isNomadTokenVisible,
   asyncMode = false,
+  containerEngine = ContainerEngine.Docker,
 }: Props) {
   const [edgeInfo, setEdgeInfo] = useState<EdgeInfo>();
   const [formKey, clearForm] = useReducer((state) => state + 1, 0);
@@ -34,6 +37,7 @@ export function EdgeAgentTab({
         readonly={!!edgeInfo}
         key={formKey}
         asyncMode={asyncMode}
+        containerEngine={containerEngine}
       />
 
       {edgeInfo && (
@@ -49,7 +53,6 @@ export function EdgeAgentTab({
           <EdgeScriptForm
             edgeInfo={edgeInfo}
             commands={commands}
-            isNomadTokenVisible={isNomadTokenVisible}
             asyncMode={asyncMode}
           />
 
@@ -57,7 +60,12 @@ export function EdgeAgentTab({
 
           <div className="row">
             <div className="flex justify-end">
-              <Button color="primary" type="reset" onClick={handleReset}>
+              <Button
+                color="primary"
+                type="reset"
+                onClick={handleReset}
+                data-cy="edge-agent-tab-add-environment-button"
+              >
                 Add another environment
               </Button>
             </div>

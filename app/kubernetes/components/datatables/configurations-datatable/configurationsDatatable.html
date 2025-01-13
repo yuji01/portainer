@@ -43,7 +43,7 @@
               ui-sref="kubernetes.deploy({ referrer: 'kubernetes.configurations' })"
               data-cy="k8sConfig-deployFromManifestButton"
             >
-              <pr-icon icon="'plus'" class-name="'!h-3'"></pr-icon>Create from manifest
+              <pr-icon icon="'plus'" class-name="'!h-3'"></pr-icon>Create from file
             </button>
           </div>
           <div class="settings">
@@ -172,7 +172,7 @@
               <td colspan="4" class="text-muted text-center">Loading...</td>
             </tr>
             <tr ng-if="$ctrl.state.filteredDataSet.length === 0">
-              <td colspan="4" class="text-muted text-center">No configuration available.</td>
+              <td colspan="4" class="text-muted text-center">No ConfigMaps or Secrets available.</td>
             </tr>
           </tbody>
         </table>

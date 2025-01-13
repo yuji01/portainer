@@ -18,6 +18,7 @@ export const gitFormModule = angular
     r2a(withUIRouter(withReactQuery(withCurrentUser(GitForm))), [
       'value',
       'onChange',
+      'environmentType',
       'isDockerStandalone',
       'deployMethod',
       'isAdditionalFilesFieldVisible',
@@ -27,6 +28,7 @@ export const gitFormModule = angular
       'baseWebhookUrl',
       'webhookId',
       'webhooksDocs',
+      'createdFromCustomTemplateId',
     ])
   )
   .component(
@@ -41,7 +43,7 @@ export const gitFormModule = angular
   )
   .component(
     'reactGitFormAutoUpdateFieldset',
-    r2a(AutoUpdateFieldset, [
+    r2a(withUIRouter(withReactQuery(AutoUpdateFieldset)), [
       'value',
       'onChange',
       'environmentType',
@@ -68,6 +70,7 @@ export const gitFormModule = angular
       'model',
       'onChange',
       'stackId',
+      'createdFromCustomTemplateId',
       'value',
       'isUrlValid',
     ])

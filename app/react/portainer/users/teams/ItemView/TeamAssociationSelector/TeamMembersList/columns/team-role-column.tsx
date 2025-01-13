@@ -2,7 +2,7 @@ import { User as UserIcon, UserPlus, UserX } from 'lucide-react';
 import { CellContext } from '@tanstack/react-table';
 
 import { User } from '@/portainer/users/types';
-import { useUser as useCurrentUser } from '@/react/hooks/useUser';
+import { useCurrentUser } from '@/react/hooks/useUser';
 import { TeamRole } from '@/react/portainer/users/teams/types';
 import { notifySuccess } from '@/portainer/services/notifications';
 import {
@@ -23,7 +23,7 @@ export const teamRole = columnHelper.accessor('Id', {
   cell: RoleCell,
 });
 
-export function RoleCell({
+function RoleCell({
   row: { original: user },
   getValue,
 }: CellContext<User, User['Id']>) {
@@ -38,12 +38,17 @@ export function RoleCell({
 
   const role = getRole(id);
 
-  const { isAdmin } = useCurrentUser();
+  const { isPureAdmin } = useCurrentUser();
 
   const Cell = role === TeamRole.Leader ? LeaderCell : MemberCell;
 
   return (
-    <Cell isAdmin={isAdmin} onClick={handleUpdateRole} disabled={disabled} />
+    <Cell
+      isAdmin={isPureAdmin}
+      onClick={handleUpdateRole}
+      disabled={disabled}
+      username={user.Username}
+    />
   );
 
   function handleUpdateRole(role: TeamRole, onSuccessMessage: string) {
@@ -61,10 +66,11 @@ export function RoleCell({
 interface LeaderCellProps {
   isAdmin: boolean;
   onClick: (role: TeamRole, onSuccessMessage: string) => void;
+  username: string;
   disabled?: boolean;
 }
 
-function LeaderCell({ isAdmin, onClick, disabled }: LeaderCellProps) {
+function LeaderCell({ isAdmin, onClick, disabled, username }: LeaderCellProps) {
   return (
     <div className="flex items-center">
       <Icon className="space-right" icon={UserPlus} mode="secondary-alt" />
@@ -76,6 +82,7 @@ function LeaderCell({ isAdmin, onClick, disabled }: LeaderCellProps) {
           onClick={() => onClick(TeamRole.Member, 'User is now team member')}
           disabled={disabled}
           icon={UserX}
+          data-cy={`remove-leader-${username}`}
         >
           Member
         </Button>
@@ -87,9 +94,10 @@ function LeaderCell({ isAdmin, onClick, disabled }: LeaderCellProps) {
 interface MemberCellProps {
   onClick: (role: TeamRole, onSuccessMessage: string) => void;
   disabled?: boolean;
+  username: string;
 }
 
-function MemberCell({ onClick, disabled }: MemberCellProps) {
+function MemberCell({ onClick, disabled, username }: MemberCellProps) {
   return (
     <div className="flex items-center">
       <Icon className="space-right" icon={UserIcon} mode="secondary-alt" />
@@ -99,6 +107,7 @@ function MemberCell({ onClick, disabled }: MemberCellProps) {
         onClick={() => onClick(TeamRole.Leader, 'User is now team leader')}
         disabled={disabled}
         icon={UserPlus}
+        data-cy={`make-leader-${username}`}
       >
         Leader
       </Button>

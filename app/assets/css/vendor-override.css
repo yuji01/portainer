@@ -18,7 +18,9 @@
 }
 
 .switch i {
-  background: var(--bg-switch-box-color);
+  @apply bg-gray-6;
+  @apply th-dark:bg-gray-warm-8;
+  @apply th-highcontrast:bg-gray-warm-8;
 }
 
 .table > thead > tr > th,
@@ -30,6 +32,34 @@
   border-top: 1px solid var(--border-table-top-color);
 }
 
+/* the first cell in the table should have 20px padding instead of 5px to match all other widgets */
+.widget .table:not(td .table) > thead > tr > th:first-child,
+.widget .table:not(td .table) > tbody > tr > th:first-child,
+.widget .table:not(td .table) > tfoot > tr > th:first-child,
+.widget .table:not(td .table) > thead > tr > td:first-child,
+.widget .table:not(td .table) > tbody > tr > td:first-child,
+.widget .table:not(td .table) > tfoot > tr > td:first-child {
+  padding-left: 20px;
+}
+
+/* the last cell in the table should have 20px padding instead of 5px to match all other widgets */
+.widget .table:not(td .table) > thead > tr > th:last-child,
+.widget .table:not(td .table) > tbody > tr > th:last-child,
+.widget .table:not(td .table) > tfoot > tr > th:last-child,
+.widget .table:not(td .table) > thead > tr > td:last-child,
+.widget .table:not(td .table) > tbody > tr > td:last-child,
+.widget .table:not(td .table) > tfoot > tr > td:last-child {
+  padding-right: 20px;
+}
+
+/* tables inside widgets should extend the full width of the widget, with 20px table cell padding padding on the left and right */
+.widget-body:not(.no-padding) > .table,
+.widget-body:not(.no-padding) > .widget-content > .table {
+  margin: 0 -20px;
+  width: calc(100% + 40px);
+  max-width: calc(100% + 40px);
+}
+
 .input-group-addon {
   color: var(--text-input-group-addon-color);
   background-color: var(--bg-input-group-addon-color);
@@ -38,6 +68,10 @@
 
 .input-group .form-control {
   z-index: unset;
+}
+
+.input-group-sm > .input-group-addon {
+  line-height: 1;
 }
 
 .text-danger {
@@ -83,13 +117,6 @@ fieldset[disabled] .form-control {
 code {
   color: var(--text-code-color);
   background-color: var(--bg-code-color);
-}
-
-.nav-container {
-  border: 1px solid var(--border-nav-container-color);
-  background-color: var(--bg-nav-container-color);
-  border-radius: 8px;
-  padding: 10px;
 }
 
 .nav-tabs {
@@ -169,17 +196,6 @@ pre {
   background-color: var(--bg-pre-color);
   color: var(--text-pre-color);
 }
-json-tree .key {
-  color: var(--text-json-tree-color);
-}
-
-json-tree .leaf-value {
-  color: var(--text-json-tree-leaf-color);
-}
-
-json-tree .branch-preview {
-  color: var(--text-json-tree-branch-preview-color);
-}
 
 .progress {
   background-color: var(--bg-progress-color);
@@ -241,6 +257,12 @@ input,
 select,
 textarea {
   background: var(--text-input-textarea);
+}
+
+[theme='highcontrast'] input,
+[theme='highcontrast'] select,
+[theme='highcontrast'] textarea {
+  border: 1px solid var(--white-color);
 }
 
 .daterangepicker {
@@ -354,23 +376,48 @@ input:-webkit-autofill {
   border-left: 8px solid var(--bg-tooltip-color);
 }
 
+[theme='highcontrast'] .tippy-box[data-placement^='top'] > .tippy-arrow:before {
+  border-top: 8px solid var(--white-color);
+  margin-bottom: -1px;
+}
+
+[theme='highcontrast'] .tippy-box[data-placement^='bottom'] > .tippy-arrow:before {
+  border-bottom: 8px solid var(--white-color);
+  margin-top: -1px;
+}
+
+[theme='highcontrast'] .tippy-box[data-placement^='right'] > .tippy-arrow:before {
+  border-right: 8px solid var(--white-color);
+  margin-left: -1px;
+}
+
+[theme='highcontrast'] .tippy-box[data-placement^='left'] > .tippy-arrow:before {
+  border-left: 8px solid var(--white-color);
+  margin-right: -1px;
+}
+
 /* Sidebar */
 .sidebar .tippy-box {
   font-size: 12px;
 }
 
-.sidebar .tippy-box[data-placement^='right'] > .tippy-arrow {
+.sidebar.tippy-box[data-placement^='right'] > .tippy-arrow {
   width: 12px;
   height: 12px;
+  margin-left: -1px;
 }
 
-.sidebar .tippy-box[data-placement^='right'] > .tippy-arrow:before {
-  border-right: 8px solid var(--ui-gray-9);
+.sidebar.tippy-box[data-placement^='right'] > .tippy-arrow:before {
+  border-right: 8px solid var(--ui-blue-9);
   border-width: 6px 8px 6px 0;
 }
 
-[theme='dark'] .sidebar .tippy-box[data-placement^='right'] > .tippy-arrow:before {
+[theme='dark'] .sidebar.tippy-box[data-placement^='right'] > .tippy-arrow:before {
   border-right: 8px solid var(--ui-gray-true-9);
+}
+
+[theme='highcontrast'] .sidebar.tippy-box[data-placement^='right'] > .tippy-arrow:before {
+  border-right: 8px solid var(--ui-white);
 }
 
 .sidebar .tippy-content {

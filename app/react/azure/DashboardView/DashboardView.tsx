@@ -27,13 +27,14 @@ export function DashboardView() {
 
   return (
     <>
-      <PageHeader title="Home" breadcrumbs={[{ label: 'Dashboard' }]} />
+      <PageHeader title="Home" breadcrumbs={[{ label: 'Dashboard' }]} reload />
 
       <div className="mx-4">
         {subscriptionsQuery.data && (
           <DashboardGrid>
             <DashboardItem
               value={subscriptionsCount as number}
+              data-cy="subscriptions-count"
               isLoading={subscriptionsQuery.isLoading}
               isRefetching={subscriptionsQuery.isRefetching}
               icon={Subscription}
@@ -42,6 +43,7 @@ export function DashboardView() {
             {!resourceGroupsQuery.isError && !resourceGroupsQuery.isLoading && (
               <DashboardItem
                 value={resourceGroupsCount}
+                data-cy="resource-groups-count"
                 isLoading={resourceGroupsQuery.isLoading}
                 icon={Package}
                 type="Resource group"

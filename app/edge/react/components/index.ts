@@ -1,16 +1,17 @@
 import angular from 'angular';
 
-import { EdgeGroupsSelector } from '@/react/edge/edge-stacks/components/EdgeGroupsSelector';
 import { r2a } from '@/react-tools/react2angular';
 import { withReactQuery } from '@/react-tools/withReactQuery';
+import { withUIRouter } from '@/react-tools/withUIRouter';
+import { AssociatedEdgeEnvironmentsSelector } from '@/react/edge/components/AssociatedEdgeEnvironmentsSelector';
+import { EdgeAsyncIntervalsForm } from '@/react/edge/components/EdgeAsyncIntervalsForm';
 import { EdgeCheckinIntervalField } from '@/react/edge/components/EdgeCheckInIntervalField';
 import { EdgeScriptForm } from '@/react/edge/components/EdgeScriptForm';
-import { EdgeAsyncIntervalsForm } from '@/react/edge/components/EdgeAsyncIntervalsForm';
-import { EdgeStackDeploymentTypeSelector } from '@/react/edge/edge-stacks/components/EdgeStackDeploymentTypeSelector';
-import { withUIRouter } from '@/react-tools/withUIRouter';
+import { EdgeGroupsSelector } from '@/react/edge/edge-stacks/components/EdgeGroupsSelector';
 
-export const componentsModule = angular
+const ngModule = angular
   .module('portainer.edge.react.components', [])
+
   .component(
     'edgeGroupsSelector',
     r2a(withUIRouter(withReactQuery(EdgeGroupsSelector)), [
@@ -19,6 +20,7 @@ export const componentsModule = angular
       'error',
       'horizontal',
       'isGroupVisible',
+      'required',
     ])
   )
   .component(
@@ -26,7 +28,6 @@ export const componentsModule = angular
     r2a(withReactQuery(EdgeScriptForm), [
       'edgeInfo',
       'commands',
-      'isNomadTokenVisible',
       'asyncMode',
       'showMetaFields',
     ])
@@ -54,12 +55,12 @@ export const componentsModule = angular
     ])
   )
   .component(
-    'edgeStackDeploymentTypeSelector',
-    r2a(withReactQuery(EdgeStackDeploymentTypeSelector), [
-      'value',
+    'associatedEdgeEnvironmentsSelector',
+    r2a(withReactQuery(AssociatedEdgeEnvironmentsSelector), [
       'onChange',
-      'hasDockerEndpoint',
-      'hasKubeEndpoint',
-      'allowKubeToSelectCompose',
+      'value',
+      'error',
     ])
-  ).name;
+  );
+
+export const componentsModule = ngModule.name;

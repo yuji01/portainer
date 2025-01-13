@@ -4,10 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pkg/errors"
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/git"
 	httperrors "github.com/portainer/portainer/api/http/errors"
@@ -15,6 +11,11 @@ import (
 	k "github.com/portainer/portainer/api/kubernetes"
 	"github.com/portainer/portainer/api/stacks/deployments"
 	"github.com/portainer/portainer/api/stacks/stackutils"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
+
+	"github.com/pkg/errors"
 )
 
 type stackGitRedployPayload struct {
@@ -26,6 +27,8 @@ type stackGitRedployPayload struct {
 	Prune                    bool
 	// Force a pulling to current image with the original tag though the image is already the latest
 	PullImage bool `example:"false"`
+
+	StackName string
 }
 
 func (payload *stackGitRedployPayload) Validate(r *http.Request) error {
@@ -43,7 +46,7 @@ func (payload *stackGitRedployPayload) Validate(r *http.Request) error {
 // @produce json
 // @param id path int true "Stack identifier"
 // @param endpointId query int false "Stacks created before version 1.18.0 might not have an associated environment(endpoint) identifier. Use this optional parameter to set the environment(endpoint) identifier used by the stack."
-// @param body body stackGitRedployPayload true "Git configs for pull and redeploy a stack"
+// @param body body stackGitRedployPayload true "Git configs for pull and redeploy of a stack. **StackName** may only be populated for Kuberenetes stacks, and if specified with a blank string, it will be set to blank"
 // @success 200 {object} portainer.Stack "Success"
 // @failure 400 "Invalid request"
 // @failure 403 "Permission denied"
@@ -56,7 +59,7 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 		return httperror.BadRequest("Invalid stack identifier route variable", err)
 	}
 
-	stack, err := handler.DataStore.Stack().Stack(portainer.StackID(stackID))
+	stack, err := handler.DataStore.Stack().Read(portainer.StackID(stackID))
 	if handler.DataStore.IsErrObjectNotFound(err) {
 		return httperror.NotFound("Unable to find a stack with the specified identifier inside the database", err)
 	} else if err != nil {
@@ -85,8 +88,7 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 		return httperror.InternalServerError("Unable to find the environment associated to the stack inside the database", err)
 	}
 
-	err = handler.requestBouncer.AuthorizedEndpointOperation(r, endpoint)
-	if err != nil {
+	if err := handler.requestBouncer.AuthorizedEndpointOperation(r, endpoint); err != nil {
 		return httperror.Forbidden("Permission denied to access environment", err)
 	}
 
@@ -95,44 +97,40 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 		return httperror.InternalServerError("Unable to retrieve info from request context", err)
 	}
 
-	//only check resource control when it is a DockerSwarmStack or a DockerComposeStack
+	// Only check resource control when it is a DockerSwarmStack or a DockerComposeStack
 	if stack.Type == portainer.DockerSwarmStack || stack.Type == portainer.DockerComposeStack {
-
 		resourceControl, err := handler.DataStore.ResourceControl().ResourceControlByResourceIDAndType(stackutils.ResourceControlID(stack.EndpointID, stack.Name), portainer.StackResourceControl)
 		if err != nil {
 			return httperror.InternalServerError("Unable to retrieve a resource control associated to the stack", err)
 		}
 
-		access, err := handler.userCanAccessStack(securityContext, endpoint.ID, resourceControl)
-		if err != nil {
+		if access, err := handler.userCanAccessStack(securityContext, endpoint.ID, resourceControl); err != nil {
 			return httperror.InternalServerError("Unable to verify user authorizations to validate stack access", err)
-		}
-		if !access {
+		} else if !access {
 			return httperror.Forbidden("Access denied to resource", httperrors.ErrResourceAccessDenied)
 		}
 	}
 
-	canManage, err := handler.userCanManageStacks(securityContext, endpoint)
-	if err != nil {
+	if canManage, err := handler.userCanManageStacks(securityContext, endpoint); err != nil {
 		return httperror.InternalServerError("Unable to verify user authorizations to validate stack deletion", err)
-	}
-	if !canManage {
+	} else if !canManage {
 		errMsg := "Stack management is disabled for non-admin users"
 		return httperror.Forbidden(errMsg, errors.New(errMsg))
 	}
 
 	var payload stackGitRedployPayload
-	err = request.DecodeAndValidateJSONPayload(r, &payload)
-	if err != nil {
+	if err := request.DecodeAndValidateJSONPayload(r, &payload); err != nil {
 		return httperror.BadRequest("Invalid request payload", err)
 	}
 
 	stack.GitConfig.ReferenceName = payload.RepositoryReferenceName
 	stack.Env = payload.Env
 	if stack.Type == portainer.DockerSwarmStack {
-		stack.Option = &portainer.StackOption{
-			Prune: payload.Prune,
-		}
+		stack.Option = &portainer.StackOption{Prune: payload.Prune}
+	}
+
+	if stack.Type == portainer.KubernetesStack {
+		stack.Name = payload.StackName
 	}
 
 	repositoryUsername := ""
@@ -164,9 +162,8 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 
 	defer clean()
 
-	httpErr := handler.deployStack(r, stack, payload.PullImage, endpoint)
-	if httpErr != nil {
-		return httpErr
+	if err := handler.deployStack(r, stack, payload.PullImage, endpoint); err != nil {
+		return err
 	}
 
 	newHash, err := handler.GitService.LatestCommitID(stack.GitConfig.URL, stack.GitConfig.ReferenceName, repositoryUsername, repositoryPassword, stack.GitConfig.TLSSkipVerify)
@@ -175,7 +172,7 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 	}
 	stack.GitConfig.ConfigHash = newHash
 
-	user, err := handler.DataStore.User().User(securityContext.UserID)
+	user, err := handler.DataStore.User().Read(securityContext.UserID)
 	if err != nil {
 		return httperror.BadRequest("Cannot find context user", errors.Wrap(err, "failed to fetch the user"))
 	}
@@ -183,13 +180,12 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 	stack.UpdateDate = time.Now().Unix()
 	stack.Status = portainer.StackStatusActive
 
-	err = handler.DataStore.Stack().UpdateStack(stack.ID, stack)
-	if err != nil {
+	if err := handler.DataStore.Stack().Update(stack.ID, stack); err != nil {
 		return httperror.InternalServerError("Unable to persist the stack changes inside the database", errors.Wrap(err, "failed to update the stack"))
 	}
 
 	if stack.GitConfig != nil && stack.GitConfig.Authentication != nil && stack.GitConfig.Authentication.Password != "" {
-		// sanitize password in the http response to minimise possible security leaks
+		// Sanitize password in the http response to minimise possible security leaks
 		stack.GitConfig.Authentication.Password = ""
 	}
 
@@ -197,23 +193,17 @@ func (handler *Handler) stackGitRedeploy(w http.ResponseWriter, r *http.Request)
 }
 
 func (handler *Handler) deployStack(r *http.Request, stack *portainer.Stack, pullImage bool, endpoint *portainer.Endpoint) *httperror.HandlerError {
-	var (
-		deploymentConfiger deployments.StackDeploymentConfiger
-		err                error
-	)
+	var deploymentConfiger deployments.StackDeploymentConfiger
 
 	switch stack.Type {
 	case portainer.DockerSwarmStack:
-		prune := false
-		if stack.Option != nil {
-			prune = stack.Option.Prune
-		}
-
 		// Create swarm deployment config
 		securityContext, err := security.RetrieveRestrictedRequestContext(r)
 		if err != nil {
 			return httperror.InternalServerError("Unable to retrieve info from request context", err)
 		}
+
+		prune := stack.Option != nil && stack.Option.Prune
 
 		deploymentConfiger, err = deployments.CreateSwarmStackDeploymentConfig(securityContext, stack, endpoint, handler.DataStore, handler.FileService, handler.StackDeployer, prune, pullImage)
 		if err != nil {
@@ -231,6 +221,7 @@ func (handler *Handler) deployStack(r *http.Request, stack *portainer.Stack, pul
 		if err != nil {
 			return httperror.InternalServerError(err.Error(), err)
 		}
+
 	case portainer.KubernetesStack:
 		handler.stackCreationMutex.Lock()
 		defer handler.stackCreationMutex.Unlock()
@@ -256,13 +247,14 @@ func (handler *Handler) deployStack(r *http.Request, stack *portainer.Stack, pul
 		if err != nil {
 			return httperror.InternalServerError(err.Error(), err)
 		}
+
 	default:
 		return httperror.InternalServerError("Unsupported stack", errors.Errorf("unsupported stack type: %v", stack.Type))
 	}
 
-	err = deploymentConfiger.Deploy()
-	if err != nil {
+	if err := deploymentConfiger.Deploy(); err != nil {
 		return httperror.InternalServerError(err.Error(), err)
 	}
+
 	return nil
 }

@@ -4,9 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 type fileResponse struct {
@@ -43,5 +43,5 @@ func (handler *Handler) edgeJobTaskLogsInspect(w http.ResponseWriter, r *http.Re
 		return httperror.InternalServerError("Unable to retrieve log file from disk", err)
 	}
 
-	return response.JSON(w, &fileResponse{FileContent: string(logFileContent)})
+	return response.JSON(w, &fileResponse{FileContent: logFileContent})
 }

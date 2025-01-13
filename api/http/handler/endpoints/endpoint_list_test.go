@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +12,8 @@ import (
 	"github.com/portainer/portainer/api/http/security"
 	"github.com/portainer/portainer/api/internal/snapshot"
 	"github.com/portainer/portainer/api/internal/testhelpers"
+
+	"github.com/segmentio/encoding/json"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,31 +23,28 @@ type endpointListTest struct {
 }
 
 func Test_EndpointList_AgentVersion(t *testing.T) {
-
 	version1Endpoint := portainer.Endpoint{
 		ID:      1,
 		GroupID: 1,
 		Type:    portainer.AgentOnDockerEnvironment,
 		Agent: struct {
-			Version string "example:\"1.0.0\""
+			Version string `example:"1.0.0"`
 		}{
 			Version: "1.0.0",
 		},
 	}
 	version2Endpoint := portainer.Endpoint{ID: 2, GroupID: 1, Type: portainer.AgentOnDockerEnvironment, Agent: struct {
-		Version string "example:\"1.0.0\""
+		Version string `example:"1.0.0"`
 	}{Version: "2.0.0"}}
 	noVersionEndpoint := portainer.Endpoint{ID: 3, Type: portainer.AgentOnDockerEnvironment, GroupID: 1}
 	notAgentEnvironments := portainer.Endpoint{ID: 4, Type: portainer.DockerEnvironment, GroupID: 1}
 
-	handler, teardown := setup(t, []portainer.Endpoint{
+	handler := setupEndpointListHandler(t, []portainer.Endpoint{
 		notAgentEnvironments,
 		version1Endpoint,
 		version2Endpoint,
 		noVersionEndpoint,
 	})
-
-	defer teardown()
 
 	type endpointListAgentVersionTest struct {
 		endpointListTest
@@ -104,22 +102,19 @@ func Test_EndpointList_AgentVersion(t *testing.T) {
 }
 
 func Test_endpointList_edgeFilter(t *testing.T) {
-
 	trustedEdgeAsync := portainer.Endpoint{ID: 1, UserTrusted: true, Edge: portainer.EnvironmentEdgeSettings{AsyncMode: true}, GroupID: 1, Type: portainer.EdgeAgentOnDockerEnvironment}
 	untrustedEdgeAsync := portainer.Endpoint{ID: 2, UserTrusted: false, Edge: portainer.EnvironmentEdgeSettings{AsyncMode: true}, GroupID: 1, Type: portainer.EdgeAgentOnDockerEnvironment}
 	regularUntrustedEdgeStandard := portainer.Endpoint{ID: 3, UserTrusted: false, Edge: portainer.EnvironmentEdgeSettings{AsyncMode: false}, GroupID: 1, Type: portainer.EdgeAgentOnDockerEnvironment}
 	regularTrustedEdgeStandard := portainer.Endpoint{ID: 4, UserTrusted: true, Edge: portainer.EnvironmentEdgeSettings{AsyncMode: false}, GroupID: 1, Type: portainer.EdgeAgentOnDockerEnvironment}
 	regularEndpoint := portainer.Endpoint{ID: 5, GroupID: 1, Type: portainer.DockerEnvironment}
 
-	handler, teardown := setup(t, []portainer.Endpoint{
+	handler := setupEndpointListHandler(t, []portainer.Endpoint{
 		trustedEdgeAsync,
 		untrustedEdgeAsync,
 		regularUntrustedEdgeStandard,
 		regularTrustedEdgeStandard,
 		regularEndpoint,
 	})
-
-	defer teardown()
 
 	type endpointListEdgeTest struct {
 		endpointListTest
@@ -184,9 +179,9 @@ func Test_endpointList_edgeFilter(t *testing.T) {
 	}
 }
 
-func setup(t *testing.T, endpoints []portainer.Endpoint) (handler *Handler, teardown func()) {
+func setupEndpointListHandler(t *testing.T, endpoints []portainer.Endpoint) *Handler {
 	is := assert.New(t)
-	_, store, teardown := datastore.MustNewTestStore(t, true, true)
+	_, store := datastore.MustNewTestStore(t, true, true)
 
 	for _, endpoint := range endpoints {
 		err := store.Endpoint().Create(&endpoint)
@@ -197,17 +192,17 @@ func setup(t *testing.T, endpoints []portainer.Endpoint) (handler *Handler, tear
 	is.NoError(err, "error creating a user")
 
 	bouncer := testhelpers.NewTestRequestBouncer()
-	handler = NewHandler(bouncer, nil)
+
+	handler := NewHandler(bouncer)
 	handler.DataStore = store
 	handler.ComposeStackManager = testhelpers.NewComposeStackManager()
+	handler.SnapshotService, _ = snapshot.NewService("1s", store, nil, nil, nil, nil)
 
-	handler.SnapshotService, _ = snapshot.NewService("1s", store, nil, nil, nil)
-
-	return handler, teardown
+	return handler
 }
 
 func buildEndpointListRequest(query string) *http.Request {
-	req := httptest.NewRequest(http.MethodGet, fmt.Sprintf("/endpoints?%s", query), nil)
+	req := httptest.NewRequest(http.MethodGet, "/endpoints?"+query, nil)
 
 	ctx := security.StoreTokenData(req, &portainer.TokenData{ID: 1, Username: "admin", Role: 1})
 	req = req.WithContext(ctx)
@@ -215,7 +210,7 @@ func buildEndpointListRequest(query string) *http.Request {
 	restrictedCtx := security.StoreRestrictedRequestContext(req, &security.RestrictedRequestContext{UserID: 1, IsAdmin: true})
 	req = req.WithContext(restrictedCtx)
 
-	req.Header.Add("Authorization", "Bearer dummytoken")
+	testhelpers.AddTestSecurityCookie(req, "Bearer dummytoken")
 
 	return req
 }
@@ -231,8 +226,7 @@ func doEndpointListRequest(req *http.Request, h *Handler, is *assert.Assertions)
 	}
 
 	resp := []portainer.Endpoint{}
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
+	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, err
 	}
 

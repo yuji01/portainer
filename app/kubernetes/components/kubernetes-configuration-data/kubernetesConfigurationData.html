@@ -14,9 +14,13 @@
       <pr-icon icon="'info'" mode="'primary'"></pr-icon>
       Switch to advanced mode to copy and paste multiple key/values
     </div>
-    <div class="col-sm-12 small text-muted vertical-center" ng-if="!$ctrl.formValues.IsSimple">
+    <div class="col-sm-12 small text-muted vertical-center" ng-if="!$ctrl.formValues.IsSimple && $ctrl.type === 'configmap'">
       <pr-icon icon="'info'" mode="'primary'"></pr-icon>
-      Generate a configuration entry per line, use YAML format
+      Generate a ConfigMap entry per line, use YAML format
+    </div>
+    <div class="col-sm-12 small text-muted vertical-center" ng-if="!$ctrl.formValues.IsSimple && $ctrl.type === 'secret'">
+      <pr-icon icon="'info'" mode="'primary'"></pr-icon>
+      Generate a Secret entry per line, use YAML format
     </div>
   </div>
 
@@ -68,6 +72,7 @@
       <div class="col-sm-8 col-lg-9">
         <input
           type="text"
+          data-cy="k8sConfigCreate-keyInput"
           class="form-control"
           maxlength="253"
           id="configuration_data_key_{{ index }}"
@@ -107,6 +112,7 @@
       <div class="col-sm-8 col-lg-9">
         <textarea
           class="form-control"
+          data-cy="k8sConfigCreate-configurationDataValue"
           rows="5"
           id="configuration_data_value_{{ index }}"
           name="configuration_data_value_{{ index }}"
@@ -152,7 +158,7 @@
   </div>
 
   <div class="form-group !px-[15px]" ng-if="!$ctrl.formValues.IsSimple">
-    <input type="text" ng-model="$ctrl.formValues.DataYaml" required style="display: none" />
+    <input type="text" ng-model="$ctrl.formValues.DataYaml" required style="display: none" data-cy="k8sConfigCreate-configurationDataYaml" />
 
     <web-editor-form
       identifier="kubernetes-configuration-editor"

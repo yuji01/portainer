@@ -5,6 +5,7 @@ import { useAgentDetails } from '@/react/portainer/environments/queries/useAgent
 import { CopyButton } from '@@/buttons/CopyButton';
 import { Code } from '@@/Code';
 import { NavTabs } from '@@/NavTabs';
+import { NavContainer } from '@@/NavTabs/NavContainer';
 
 const deploymentsStandalone = [
   {
@@ -61,11 +62,13 @@ export function DeploymentScripts({ isDockerStandalone }: Props) {
   });
 
   return (
-    <NavTabs
-      options={options}
-      onSelect={(id: string) => setDeployType(id)}
-      selectedId={deployType}
-    />
+    <NavContainer>
+      <NavTabs
+        options={options}
+        onSelect={(id: string) => setDeployType(id)}
+        selectedId={deployType}
+      />
+    </NavContainer>
   );
 }
 
@@ -80,7 +83,9 @@ function DeployCode({ code }: DeployCodeProps) {
         <Code>{code}</Code>
       </div>
       <div className="mt-2">
-        <CopyButton copyText={code}>Copy command</CopyButton>
+        <CopyButton copyText={code} data-cy="copy-deployment-script">
+          Copy command
+        </CopyButton>
       </div>
     </>
   );
@@ -96,6 +101,7 @@ function linuxStandaloneCommand(agentVersion: string, agentSecret: string) {
   --restart=always \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -v /var/lib/docker/volumes:/var/lib/docker/volumes \\
+  -v /:/host \\
   portainer/agent:${agentVersion}
 `;
 }
@@ -116,6 +122,7 @@ docker service create \\
   --constraint 'node.platform.os == linux' \\
   --mount type=bind,src=//var/run/docker.sock,dst=/var/run/docker.sock \\
   --mount type=bind,src=//var/lib/docker/volumes,dst=/var/lib/docker/volumes \\
+  --mount type=bind,src=//,dst=/host \\
   portainer/agent:${agentVersion}
 `;
 }

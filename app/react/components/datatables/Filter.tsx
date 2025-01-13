@@ -1,13 +1,17 @@
 import clsx from 'clsx';
 import { useMemo } from 'react';
 import { Menu, MenuButton, MenuPopover } from '@reach/menu-button';
-import { Column } from '@tanstack/react-table';
+import { Column, Row } from '@tanstack/react-table';
 import { Check, Filter } from 'lucide-react';
+
+import { getValueAsArrayOfStrings } from '@/portainer/helpers/array';
 
 import { Icon } from '@@/Icon';
 
+import { DefaultType } from './types';
+
 interface MultipleSelectionFilterProps {
-  options: string[];
+  options: Array<string> | ReadonlyArray<string>;
   value: string[];
   filterKey: string;
   onChange: (value: string[]) => void;
@@ -26,12 +30,12 @@ export function MultipleSelectionFilter({
     <div>
       <Menu>
         <MenuButton
-          className={clsx('table-filter', { 'filter-active': enabled })}
+          className={clsx('table-filter flex items-center gap-1', {
+            'filter-active': enabled,
+          })}
         >
-          <div className="flex items-center gap-1">
-            Filter
-            <Icon icon={enabled ? Check : Filter} />
-          </div>
+          Filter
+          <Icon icon={enabled ? Check : Filter} />
         </MenuButton>
         <MenuPopover className="dropdown-menu">
           <div className="tableMenu">
@@ -44,6 +48,7 @@ export function MultipleSelectionFilter({
                     type="checkbox"
                     checked={value.includes(option)}
                     onChange={() => handleChange(option)}
+                    data-cy={`filter_${filterKey}_${index}`}
                   />
                   <label htmlFor={`filter_${filterKey}_${index}`}>
                     {option}
@@ -68,8 +73,14 @@ export function MultipleSelectionFilter({
   }
 }
 
-export function filterHOC<TData extends Record<string, unknown>>(
-  menuTitle: string
+export type FilterOptionsTransformer<TData extends DefaultType> = (
+  rows: Row<TData>[],
+  id: string
+) => string[];
+
+export function filterHOC<TData extends DefaultType>(
+  menuTitle: string,
+  filterOptionsTransformer: FilterOptionsTransformer<TData> = defaultFilterOptionsTransformer
 ) {
   return function Filter({
     column: { getFilterValue, setFilterValue, getFacetedRowModel, id },
@@ -78,15 +89,10 @@ export function filterHOC<TData extends Record<string, unknown>>(
   }) {
     const { flatRows } = getFacetedRowModel();
 
-    const options = useMemo(() => {
-      const options = new Set<string>();
-      flatRows.forEach(({ getValue }) => {
-        const value = getValue<string>(id);
-
-        options.add(value);
-      });
-      return Array.from(options);
-    }, [flatRows, id]);
+    const options = useMemo(
+      () => filterOptionsTransformer(flatRows, id),
+      [flatRows, id]
+    );
 
     const value = getFilterValue();
 
@@ -104,18 +110,14 @@ export function filterHOC<TData extends Record<string, unknown>>(
   };
 }
 
-function getValueAsArrayOfStrings(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-
-  if (!value || (typeof value !== 'string' && typeof value !== 'number')) {
-    return [];
-  }
-
-  if (typeof value === 'number') {
-    return [value.toString()];
-  }
-
-  return [value];
+function defaultFilterOptionsTransformer<TData extends DefaultType>(
+  rows: Row<TData>[],
+  id: string
+) {
+  const options = new Set<string>();
+  rows.forEach(({ getValue }) => {
+    const value = getValue<string>(id);
+    options.add(value);
+  });
+  return Array.from(options);
 }

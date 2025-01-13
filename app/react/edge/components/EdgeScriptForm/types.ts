@@ -1,13 +1,12 @@
 import { TagId } from '@/portainer/tags/types';
-import { EnvironmentGroupId } from '@/react/portainer/environments/environment-groups/types';
+import { EnvironmentGroupId } from '@/react/portainer/environments/types';
 
 import { EdgeGroup } from '../../edge-groups/types';
 
-export type Platform = 'standalone' | 'swarm' | 'k8s' | 'nomad';
+export type Platform = 'standalone' | 'swarm' | 'podman' | 'k8s';
 export type OS = 'win' | 'linux';
 
 export interface ScriptFormValues {
-  nomadToken: string;
   authEnabled: boolean;
   tlsEnabled: boolean;
 
@@ -17,7 +16,7 @@ export interface ScriptFormValues {
   os: OS;
   platform: Platform;
 
-  edgeIdGenerator?: string;
+  edgeIdGenerator: string;
 
   group: EnvironmentGroupId;
   edgeGroupsIds: Array<EdgeGroup['Id']>;

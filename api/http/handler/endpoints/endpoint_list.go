@@ -2,17 +2,14 @@ package endpoints
 
 import (
 	"net/http"
-	"sort"
 	"strconv"
-	"time"
 
-	"github.com/portainer/libhttp/request"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/http/security"
 	"github.com/portainer/portainer/api/internal/endpointutils"
-
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/response"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 const (
@@ -32,7 +29,7 @@ const (
 // @produce json
 // @param start query int false "Start searching from"
 // @param limit query int false "Limit results to this value"
-// @param sort query int false "Sort results by this value"
+// @param sort query sortKey false "Sort results by this value" Enum("Name", "Group", "Status", "LastCheckIn", "EdgeID")
 // @param order query int false "Order sorted results by desc/asc" Enum("asc", "desc")
 // @param search query string false "Search query"
 // @param groupIds query []int false "List environments(endpoints) of these groups"
@@ -46,7 +43,10 @@ const (
 // @param edgeAsync query bool false "if exists true show only edge async agents, false show only standard edge agents. if missing, will show both types (relevant only for edge agents)"
 // @param edgeDeviceUntrusted query bool false "if true, show only untrusted edge agents, if false show only trusted edge agents (relevant only for edge agents)"
 // @param edgeCheckInPassedSeconds query number false "if bigger then zero, show only edge agents that checked-in in the last provided seconds (relevant only for edge agents)"
+// @param excludeSnapshots query bool false "if true, the snapshot data won't be retrieved"
 // @param name query string false "will return only environments(endpoints) with this name"
+// @param edgeStackId query portainer.EdgeStackID false "will return the environements of the specified edge stack"
+// @param edgeStackStatus query string false "only applied when edgeStackId exists. Filter the returned environments based on their deployment status in the stack (not the environment status!)" Enum("Pending", "Ok", "Error", "Acknowledged", "Remove", "RemoteUpdateSuccess", "ImagesPulled")
 // @success 200 {array} portainer.Endpoint "Endpoints"
 // @failure 500 "Server error"
 // @router /endpoints [get]
@@ -60,9 +60,14 @@ func (handler *Handler) endpointList(w http.ResponseWriter, r *http.Request) *ht
 	sortField, _ := request.RetrieveQueryParameter(r, "sort", true)
 	sortOrder, _ := request.RetrieveQueryParameter(r, "order", true)
 
-	endpointGroups, err := handler.DataStore.EndpointGroup().EndpointGroups()
+	endpointGroups, err := handler.DataStore.EndpointGroup().ReadAll()
 	if err != nil {
 		return httperror.InternalServerError("Unable to retrieve environment groups from the database", err)
+	}
+
+	edgeGroups, err := handler.DataStore.EdgeGroup().ReadAll()
+	if err != nil {
+		return httperror.InternalServerError("Unable to retrieve edge groups from the database", err)
 	}
 
 	endpoints, err := handler.DataStore.Endpoint().Endpoints()
@@ -87,12 +92,12 @@ func (handler *Handler) endpointList(w http.ResponseWriter, r *http.Request) *ht
 
 	filteredEndpoints := security.FilterEndpoints(endpoints, endpointGroups, securityContext)
 
-	filteredEndpoints, totalAvailableEndpoints, err := handler.filterEndpointsByQuery(filteredEndpoints, query, endpointGroups, settings)
+	filteredEndpoints, totalAvailableEndpoints, err := handler.filterEndpointsByQuery(filteredEndpoints, query, endpointGroups, edgeGroups, settings)
 	if err != nil {
 		return httperror.InternalServerError("Unable to filter endpoints", err)
 	}
 
-	sortEndpointsByField(filteredEndpoints, endpointGroups, sortField, sortOrder == "desc")
+	sortEnvironmentsByField(filteredEndpoints, endpointGroups, getSortKey(sortField), sortOrder == "desc")
 
 	filteredEndpointCount := len(filteredEndpoints)
 
@@ -104,7 +109,6 @@ func (handler *Handler) endpointList(w http.ResponseWriter, r *http.Request) *ht
 		if paginatedEndpoints[idx].EdgeCheckinInterval == 0 {
 			paginatedEndpoints[idx].EdgeCheckinInterval = settings.EdgeAgentCheckinInterval
 		}
-		paginatedEndpoints[idx].QueryDate = time.Now().Unix()
 		endpointutils.UpdateEdgeEndpointHeartbeat(&paginatedEndpoints[idx], settings)
 		if !query.excludeSnapshots {
 			err = handler.SnapshotService.FillSnapshotData(&paginatedEndpoints[idx])
@@ -140,46 +144,6 @@ func paginateEndpoints(endpoints []portainer.Endpoint, start, limit int) []porta
 	}
 
 	return endpoints[start:end]
-}
-
-func sortEndpointsByField(endpoints []portainer.Endpoint, endpointGroups []portainer.EndpointGroup, sortField string, isSortDesc bool) {
-
-	switch sortField {
-	case "Name":
-		if isSortDesc {
-			sort.Stable(sort.Reverse(EndpointsByName(endpoints)))
-		} else {
-			sort.Stable(EndpointsByName(endpoints))
-		}
-
-	case "Group":
-		endpointGroupNames := make(map[portainer.EndpointGroupID]string, 0)
-		for _, group := range endpointGroups {
-			endpointGroupNames[group.ID] = group.Name
-		}
-
-		endpointsByGroup := EndpointsByGroup{
-			endpointGroupNames: endpointGroupNames,
-			endpoints:          endpoints,
-		}
-
-		if isSortDesc {
-			sort.Stable(sort.Reverse(endpointsByGroup))
-		} else {
-			sort.Stable(endpointsByGroup)
-		}
-
-	case "Status":
-		if isSortDesc {
-			sort.Slice(endpoints, func(i, j int) bool {
-				return endpoints[i].Status > endpoints[j].Status
-			})
-		} else {
-			sort.Slice(endpoints, func(i, j int) bool {
-				return endpoints[i].Status < endpoints[j].Status
-			})
-		}
-	}
 }
 
 func getEndpointGroup(groupID portainer.EndpointGroupID, groups []portainer.EndpointGroup) portainer.EndpointGroup {

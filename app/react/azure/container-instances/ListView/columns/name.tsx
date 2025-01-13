@@ -16,12 +16,12 @@ export function NameCell({
   row: { original: container },
 }: CellContext<ContainerGroup, string>) {
   const name = getValue();
-
   return (
     <Link
       to="azure.containerinstances.container"
       params={{ id: container.id }}
       className="hover:underline"
+      data-cy={`aci-container-${container.id}`}
     >
       {name}
     </Link>

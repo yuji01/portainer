@@ -17,6 +17,13 @@
 html {
   font-size: 16px;
   overflow-y: scroll;
+  scroll-behavior: smooth;
+}
+
+html[theme='dark'],
+html[theme='highcontrast'] {
+  /* make the scrollbars dark theme when in the dark modes */
+  color-scheme: dark;
 }
 
 body {
@@ -84,17 +91,22 @@ body,
 
 .form-section-title {
   @apply text-gray-9;
-  @apply th-dark:text-gray-5;
+  @apply th-dark:text-white;
   @apply th-highcontrast:text-white;
 
-  margin-top: 5px;
+  margin-top: 20px;
   margin-bottom: 10px;
   padding-left: 0;
   font-weight: 500;
   font-size: 16px;
 }
 
-.form-horizontal .control-label.text-left {
+.form-section-title:first-child {
+  margin-top: 5px;
+}
+
+.form-horizontal .control-label.text-left,
+.form-row .control-label.text-left {
   text-align: left;
   font-size: 0.9em;
 }
@@ -214,6 +226,14 @@ input[type='checkbox'] {
   background-color: var(--bg-blocklist-item-selected-color);
   border: 2px solid var(--border-blocklist-item-selected-color);
   color: var(--text-blocklist-item-selected-color);
+}
+
+.blocklist-item:not(.blocklist-item-not-interactive):hover {
+  @apply border border-blue-7;
+  cursor: pointer;
+
+  background-color: var(--bg-blocklist-hover-color);
+  color: var(--text-blocklist-hover-color);
 }
 
 .blocklist-item-box {
@@ -595,24 +615,6 @@ input[type='checkbox'] {
   font-weight: 600;
 }
 
-/* json-tree override */
-json-tree {
-  font-size: 13px;
-  color: var(--blue-5);
-}
-
-json-tree .key {
-  color: var(--blue-3);
-  padding-right: 5px;
-}
-
-json-tree .branch-preview {
-  font-style: normal;
-  font-size: 11px;
-  opacity: 0.5;
-}
-/* !json-tree override */
-
 /* uib-progressbar override */
 .progress-bar {
   color: var(--text-progress-bar-color);
@@ -708,4 +710,22 @@ input[style*='background-image: url("data:image/png'] {
 
 input:-webkit-autofill {
   @apply caret-[--grey-25] th-highcontrast:caret-white th-dark:caret-white;
+}
+
+/*
+rules for styling the progress bar on both chrome and firefox
+first rule is for firefox and the second rule is for chrome
+
+use the `.progress-filled` tailwind variant util to style the filled value of the progress bar, 
+and the usual styles to style the unfilled value.
+
+see app/react/edge/edge-stacks/ListView/EdgeStacksDatatable/DeploymentCounter.tsx for an example
+*/
+
+progress {
+  appearance: none;
+}
+
+progress::-webkit-progress-bar {
+  background-color: transparent;
 }

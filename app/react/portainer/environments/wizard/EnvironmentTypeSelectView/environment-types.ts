@@ -1,8 +1,8 @@
 import { FeatureId } from '@/react/portainer/feature-flags/enums';
 import Docker from '@/assets/ico/vendor/docker.svg?c';
+import Podman from '@/assets/ico/vendor/podman.svg?c';
 import Kubernetes from '@/assets/ico/vendor/kubernetes.svg?c';
 import Azure from '@/assets/ico/vendor/azure.svg?c';
-import Nomad from '@/assets/ico/vendor/nomad.svg?c';
 import KaaS from '@/assets/ico/vendor/kaas-icon.svg?c';
 import InstallK8s from '@/assets/ico/vendor/install-kubernetes.svg?c';
 
@@ -11,9 +11,9 @@ import { BoxSelectorOption } from '@@/BoxSelector';
 export type EnvironmentOptionValue =
   | 'dockerStandalone'
   | 'dockerSwarm'
+  | 'podman'
   | 'kubernetes'
   | 'aci'
-  | 'nomad'
   | 'kaas'
   | 'k8sInstall';
 
@@ -22,7 +22,6 @@ export interface EnvironmentOption
   id: EnvironmentOptionValue;
   value: EnvironmentOptionValue;
 }
-
 export const existingEnvironmentTypes: EnvironmentOption[] = [
   {
     id: 'dockerStandalone',
@@ -41,6 +40,14 @@ export const existingEnvironmentTypes: EnvironmentOption[] = [
     description: 'Connect to Docker Swarm via URL/IP, API or Socket',
   },
   {
+    id: 'podman',
+    value: 'podman',
+    label: 'Podman',
+    icon: Podman,
+    iconType: 'logo',
+    description: 'Connect to Podman via URL/IP or Socket',
+  },
+  {
     id: 'kubernetes',
     value: 'kubernetes',
     label: 'Kubernetes',
@@ -55,16 +62,6 @@ export const existingEnvironmentTypes: EnvironmentOption[] = [
     description: 'Connect to ACI environment via API',
     iconType: 'logo',
     icon: Azure,
-  },
-  {
-    id: 'nomad',
-    value: 'nomad',
-    label: 'Nomad',
-    description: 'Connect to HashiCorp Nomad environment via API',
-    icon: Nomad,
-    iconType: 'logo',
-    feature: FeatureId.NOMAD,
-    disabledWhenLimited: true,
   },
 ];
 
@@ -92,7 +89,7 @@ export const newEnvironmentTypes: EnvironmentOption[] = [
   },
 ];
 
-export const environmentTypes = [
+export const environmentTypes: EnvironmentOption[] = [
   ...existingEnvironmentTypes,
   ...newEnvironmentTypes,
 ];
@@ -100,9 +97,9 @@ export const environmentTypes = [
 export const formTitles: Record<EnvironmentOptionValue, string> = {
   dockerStandalone: 'Connect to your Docker Standalone environment',
   dockerSwarm: 'Connect to your Docker Swarm environment',
+  podman: 'Connect to your Podman environment',
   kubernetes: 'Connect to your Kubernetes environment',
   aci: 'Connect to your ACI environment',
-  nomad: 'Connect to your Nomad environment',
   kaas: 'Provision a KaaS environment',
   k8sInstall: 'Create a Kubernetes cluster',
 };

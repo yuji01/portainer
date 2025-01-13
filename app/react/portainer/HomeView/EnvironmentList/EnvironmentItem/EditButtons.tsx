@@ -2,7 +2,7 @@ import { Edit2, Settings } from 'lucide-react';
 import { ReactNode } from 'react';
 import clsx from 'clsx';
 
-import { useUser } from '@/react/hooks/useUser';
+import { useCurrentUser } from '@/react/hooks/useUser';
 import {
   Environment,
   PlatformType,
@@ -15,7 +15,7 @@ import {
 import { LinkButton } from '@@/LinkButton';
 
 export function EditButtons({ environment }: { environment: Environment }) {
-  const { isAdmin } = useUser();
+  const { isPureAdmin } = useCurrentUser();
 
   const isEdgeAsync = checkEdgeAsync(environment);
 
@@ -23,13 +23,15 @@ export function EditButtons({ environment }: { environment: Environment }) {
 
   const buttonsClasses = clsx(
     'w-full h-full !ml-0 !rounded-none',
-    'hover:bg-gray-3 th-dark:hover:bg-gray-9 th-highcontrast:hover:bg-white'
+    'hover:bg-gray-3',
+    'th-dark:hover:bg-gray-9',
+    'th-highcontrast:hover:bg-white th-highcontrast:hover:text-black'
   );
 
   return (
     <ButtonsGrid className="ml-3 w-11">
       <LinkButton
-        disabled={!isAdmin}
+        disabled={!isPureAdmin}
         to="portainer.endpoints.endpoint"
         params={{ id: environment.Id, redirectTo: 'portainer.home' }}
         color="none"
@@ -37,10 +39,11 @@ export function EditButtons({ environment }: { environment: Environment }) {
         size="medium"
         className={buttonsClasses}
         title="Edit"
+        data-cy={`edit-environment-link-${environment.Name}`}
       />
 
       <LinkButton
-        disabled={!configRoute || isEdgeAsync || !isAdmin}
+        disabled={!configRoute || isEdgeAsync || !isPureAdmin}
         to={configRoute}
         params={{ endpointId: environment.Id }}
         color="none"
@@ -48,6 +51,7 @@ export function EditButtons({ environment }: { environment: Environment }) {
         size="medium"
         className={buttonsClasses}
         title="Configuration"
+        data-cy={`configure-environment-link-${environment.Name}`}
       />
     </ButtonsGrid>
   );
@@ -85,8 +89,13 @@ function ButtonsGrid({
   return (
     <div
       className={clsx(
-        'grid rounded-r-lg border border-solid',
-        'border-gray-5 th-highcontrast:border-white th-dark:border-gray-9',
+        'grid',
+        // trace borders but make them transparent so
+        // * hovering the env item won't make env box borders clip with the grid borders
+        // * hovering the buttons won't make the button's icon flicker
+        'rounded-r-lg border border-solid',
+        'border-y-transparent border-r-transparent',
+        'border-l-gray-5 th-highcontrast:border-l-white th-dark:border-l-gray-9',
         'overflow-hidden',
         className
       )}
@@ -95,7 +104,7 @@ function ButtonsGrid({
         <div
           key={index}
           className={clsx({
-            'border-0 border-b border-solid border-b-inherit':
+            'border-0 border-b border-solid border-b-gray-5 th-highcontrast:border-b-white th-dark:border-b-gray-9':
               index < children.length - 1,
           })}
         >

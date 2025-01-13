@@ -3,10 +3,10 @@ package system
 import (
 	"net/http"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/response"
 	"github.com/portainer/portainer/api/internal/endpointutils"
 	plf "github.com/portainer/portainer/api/platform"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 type systemInfoResponse struct {
@@ -42,12 +42,11 @@ func (handler *Handler) systemInfo(w http.ResponseWriter, r *http.Request) *http
 		if endpointutils.IsEdgeEndpoint(&environment) {
 			edgeAgents++
 		}
-
 	}
 
-	platform, err := plf.DetermineContainerPlatform()
+	platform, err := handler.platformService.GetPlatform()
 	if err != nil {
-		return httperror.InternalServerError("Unable to determine container platform", err)
+		return httperror.InternalServerError("Failed to get platform", err)
 	}
 
 	return response.JSON(w, &systemInfoResponse{

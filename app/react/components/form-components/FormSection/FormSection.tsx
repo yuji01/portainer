@@ -1,43 +1,52 @@
-import { PropsWithChildren, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { PropsWithChildren, ReactNode, useState } from 'react';
 
-import { Icon } from '@@/Icon';
+import { CollapseExpandButton } from '@@/CollapseExpandButton';
 
 import { FormSectionTitle } from '../FormSectionTitle';
 
 interface Props {
-  title: string;
+  title: ReactNode;
+  titleSize?: 'sm' | 'md' | 'lg';
   isFoldable?: boolean;
+  defaultFolded?: boolean;
+  titleClassName?: string;
+  className?: string;
+  htmlFor?: string;
 }
 
 export function FormSection({
   title,
+  titleSize = 'md',
   children,
   isFoldable = false,
+  defaultFolded = isFoldable,
+  titleClassName,
+  className,
+  htmlFor = '',
 }: PropsWithChildren<Props>) {
-  const [isExpanded, setIsExpanded] = useState(!isFoldable);
+  const [isExpanded, setIsExpanded] = useState(!defaultFolded);
+  const id = `foldingButton${title}`;
 
   return (
-    <>
-      <FormSectionTitle htmlFor={isFoldable ? `foldingButton${title}` : ''}>
+    <div className={className}>
+      <FormSectionTitle
+        htmlFor={isFoldable ? id : htmlFor}
+        titleSize={titleSize}
+        className={titleClassName}
+      >
         {isFoldable && (
-          <button
-            id={`foldingButton${title}`}
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="mx-2 !ml-0 inline-flex w-2 items-center justify-center border-0 bg-transparent"
-          >
-            <Icon
-              icon={isExpanded ? ChevronDown : ChevronRight}
-              className="shrink-0"
-            />
-          </button>
+          <CollapseExpandButton
+            isExpanded={isExpanded}
+            data-cy={id}
+            id={id}
+            onClick={() => setIsExpanded((isExpanded) => !isExpanded)}
+          />
         )}
 
         {title}
       </FormSectionTitle>
 
       {isExpanded && children}
-    </>
+    </div>
   );
 }

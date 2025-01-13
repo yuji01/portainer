@@ -30,7 +30,7 @@
                 <div class="form-group">
                   <span class="col-sm-12 text-muted small">
                     A name must be specified in one of the following formats: <code>name:tag</code>, <code>repository/name:tag</code> or
-                    <code>registryfqdn:port/repository/name:tag</code> format. If you omit the tag the default <b>latest</b> value is assumed.
+                    <code>registry:port/repository/name:tag</code> format. If you omit the tag the default <b>latest</b> value is assumed.
                   </span>
                 </div>
                 <div class="form-group">
@@ -40,7 +40,15 @@
                         <!-- name-input -->
                         <div class="input-group col-sm-5 input-group-sm">
                           <span class="input-group-addon">name</span>
-                          <input type="text" class="form-control" ng-model="item.Name" ng-change="checkName($index)" placeholder="e.g. my-image:my-tag" auto-focus />
+                          <input
+                            type="text"
+                            class="form-control"
+                            ng-model="item.Name"
+                            ng-change="checkName($index)"
+                            placeholder="e.g. my-image:my-tag"
+                            auto-focus
+                            data-cy="image-name-input"
+                          />
                           <span class="input-group-addon" ng-if="!item.Valid">
                             <pr-icon icon="'x'" mode="'danger'"></pr-icon>
                           </span>
@@ -87,7 +95,7 @@
                     <code-editor
                       identifier="image-build-editor"
                       placeholder="Define or paste the content of your Dockerfile here"
-                      yml="false"
+                      docker-file="true"
                       on-change="(editorUpdate)"
                     ></code-editor>
                   </div>
@@ -101,9 +109,7 @@
                       </span>
                     </div>
                     <button class="btn btn-sm btn-primary" ngf-select="selectAdditionalFiles($files)" ngf-multiple="true">Select files</button>
-                    <span ng-repeat="item in formValues.AdditionalFiles track by $index" class="mx-2">
-                      {{ item.name }}
-                    </span>
+                    <span ng-repeat="item in formValues.AdditionalFiles track by $index" class="mx-2"> {{ item.name }} </span>
                   </div>
                 </div>
               </div>
@@ -133,7 +139,7 @@
                   <div class="form-group">
                     <label for="image_path" class="col-sm-2 control-label text-left">Dockerfile path</label>
                     <div class="col-sm-10">
-                      <input type="text" class="form-control" ng-model="formValues.Path" id="image_path" placeholder="Dockerfile" />
+                      <input type="text" class="form-control" ng-model="formValues.Path" id="image_path" placeholder="Dockerfile" data-cy="image-path-input" />
                     </div>
                   </div>
                 </div>
@@ -156,6 +162,7 @@
                   <div class="col-sm-10">
                     <input
                       type="text"
+                      data-cy="image-url-input"
                       class="form-control"
                       ng-model="formValues.URL"
                       id="image_url"
@@ -172,7 +179,7 @@
                 <div class="form-group">
                   <label for="image_path" class="col-sm-2 control-label text-left">Dockerfile path</label>
                   <div class="col-sm-10">
-                    <input type="text" class="form-control" ng-model="formValues.Path" id="image_path" placeholder="Dockerfile" />
+                    <input type="text" class="form-control" ng-model="formValues.Path" id="image_path" placeholder="Dockerfile" data-cy="image-path-input" />
                   </div>
                 </div>
               </div>
@@ -209,7 +216,7 @@
           </uib-tab>
           <uib-tab index="1" disable="!buildLogs">
             <uib-tab-heading class="vertical-center"> <pr-icon icon="'file-text'" class="leading-none"></pr-icon> Output </uib-tab-heading>
-            <pre class="log_viewer">
+            <pre class="log_viewer" data-cy="logViewer">
               <div ng-repeat="line in buildLogs track by $index" class="line"><p class="inner_line" ng-click="active=!active" ng-class="{'line_selected': active}">{{ line }}</p></div>
               <div ng-if="!buildLogs.length" class="line"><p class="inner_line">No build output available.</p></div>
             </pre>

@@ -1,5 +1,6 @@
-import { KubernetesConfigurationKinds } from 'Kubernetes/models/configuration/models';
 import { FileCode, Lock } from 'lucide-react';
+
+import { KubernetesConfigurationKinds } from '@/kubernetes/models/configuration/models';
 
 import { BoxSelectorOption } from '@@/BoxSelector';
 
@@ -10,7 +11,7 @@ export const typeOptions: ReadonlyArray<BoxSelectorOption<number>> = [
     icon: FileCode,
     iconType: 'badge',
     label: 'ConfigMap',
-    description: 'This configuration holds non-sensitive information',
+    description: 'This kind holds non-sensitive information',
   },
   {
     id: 'type_secret',
@@ -18,6 +19,6 @@ export const typeOptions: ReadonlyArray<BoxSelectorOption<number>> = [
     icon: Lock,
     iconType: 'badge',
     label: 'Secret',
-    description: 'This configuration holds sensitive information',
+    description: 'This kind holds sensitive information',
   },
 ] as const;

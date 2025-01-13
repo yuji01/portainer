@@ -1,7 +1,10 @@
 import { AxiosError } from 'axios';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
-import axios, { parseAxiosError } from '@/portainer/services/axios';
+import axios, {
+  isDefaultResponse,
+  parseAxiosError,
+} from '@/portainer/services/axios';
 
 interface Creds {
   username?: string;
@@ -12,6 +15,7 @@ interface CheckRepoOptions {
   creds?: Creds;
   force?: boolean;
   tlsSkipVerify?: boolean;
+  createdFromCustomTemplateId?: number;
 }
 
 export function useCheckRepo(
@@ -40,18 +44,25 @@ export async function checkRepo(
   try {
     await axios.post<string[]>(
       '/gitops/repo/refs',
-      { repository, tlsSkipVerify: options.tlsSkipVerify, ...options.creds },
+      {
+        repository,
+        tlsSkipVerify: options.tlsSkipVerify,
+        createdFromCustomTemplateId: options.createdFromCustomTemplateId,
+        ...options.creds,
+      },
       force ? { params: { force } } : {}
     );
     return true;
   } catch (error) {
-    throw parseAxiosError(error as Error, '', (axiosError: AxiosError) => {
-      let details = axiosError.response?.data.details;
+    throw parseAxiosError(error, '', (axiosError: AxiosError) => {
+      let details = isDefaultResponse(axiosError.response?.data)
+        ? axiosError.response?.data.details || ''
+        : '';
 
       const { creds = {} } = options;
       // If no credentials were provided alter error from git to indicate repository is not found or is private
       if (
-        !(creds.username && creds.password) &&
+        (!(creds.username && creds.password) || !creds.gitCredentialId) &&
         details ===
           'authentication failed, please ensure that the git credentials are correct'
       ) {

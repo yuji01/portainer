@@ -4,6 +4,7 @@ import { buildConfirmButton } from '@@/modals/utils';
 import { ModalType } from '@@/modals';
 import { parseAutoUpdateResponse } from '@/react/portainer/gitops/AutoUpdateFieldset/utils';
 import { baseStackWebhookUrl, createWebhookId } from '@/portainer/helpers/webhookHelper';
+import { confirmEnableTLSVerify } from '@/react/portainer/gitops/utils';
 
 class KubernetesRedeployAppGitFormController {
   /* @ngInject */
@@ -71,6 +72,13 @@ class KubernetesRedeployAppGitFormController {
 
   onChangeTLSSkipVerify(value) {
     return this.$async(async () => {
+      if (this.stack.GitConfig.TLSSkipVerify && !value) {
+        const confirmed = await confirmEnableTLSVerify();
+
+        if (!confirmed) {
+          return;
+        }
+      }
       this.onChange({ TLSSkipVerify: value });
     });
   }
@@ -118,10 +126,14 @@ class KubernetesRedeployAppGitFormController {
           return;
         }
 
+        if (this.stack.Name !== this.stackName) {
+          this.formValues.StackName = this.stackName;
+        }
+
         this.state.redeployInProgress = true;
         await this.StackService.updateKubeGit(this.stack.Id, this.stack.EndpointId, this.namespace, this.formValues);
-        this.Notifications.success('Success', 'Pulled and redeployed stack successfully');
-        await this.$state.reload();
+        this.Notifications.success('Success', 'Pulled and redeployed application successfully');
+        this.$state.go('kubernetes.applications.application', { name: this.appName, namespace: this.namespace, endpointId: this.endpointId }, { inherit: false });
       } catch (err) {
         this.Notifications.error('Failure', err, 'Failed redeploying application');
       } finally {
@@ -158,6 +170,8 @@ class KubernetesRedeployAppGitFormController {
   }
 
   $onInit() {
+    this.endpointId = this.$state.params.endpointId;
+    this.appName = this.$state.params.name;
     this.formValues.RefName = this.stack.GitConfig.ReferenceName;
     this.formValues.TLSSkipVerify = this.stack.GitConfig.TLSSkipVerify;
 

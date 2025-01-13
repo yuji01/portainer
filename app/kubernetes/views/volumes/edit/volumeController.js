@@ -6,6 +6,7 @@ import KubernetesEventHelper from 'Kubernetes/helpers/eventHelper';
 import { KubernetesStorageClassAccessPolicies } from 'Kubernetes/models/storage-class/models';
 import KubernetesNamespaceHelper from 'Kubernetes/helpers/namespaceHelper';
 import { confirmRedeploy } from '@/react/kubernetes/volumes/ItemView/ConfirmRedeployModal';
+import { isVolumeUsed } from '@/react/kubernetes/volumes/utils';
 
 class KubernetesVolumeController {
   /* @ngInject */
@@ -49,7 +50,7 @@ class KubernetesVolumeController {
   }
 
   isExternalVolume() {
-    return KubernetesVolumeHelper.isExternalVolume(this.volume);
+    return !this.volume.PersistentVolumeClaim.ApplicationOwner;
   }
 
   isSystemNamespace() {
@@ -57,7 +58,7 @@ class KubernetesVolumeController {
   }
 
   isUsed() {
-    return KubernetesVolumeHelper.isUsed(this.volume);
+    return isVolumeUsed(this.volume);
   }
 
   onChangeSize() {
@@ -102,7 +103,7 @@ class KubernetesVolumeController {
   }
 
   updateVolume() {
-    if (KubernetesVolumeHelper.isUsed(this.volume)) {
+    if (isVolumeUsed(this.volume)) {
       confirmRedeploy().then((redeploy) => {
         return this.$async(this.updateVolumeAsync, redeploy);
       });
@@ -174,8 +175,8 @@ class KubernetesVolumeController {
       increaseSize: false,
       volumeSize: 0,
       volumeSizeUnit: 'GB',
-      volumeSharedAccessPolicy: '',
-      volumeSharedAccessPolicyTooltip: '',
+      volumeSharedAccessPolicies: [],
+      volumeSharedAccessPolicyTooltips: '',
       errors: {
         volumeSize: false,
       },
@@ -186,14 +187,12 @@ class KubernetesVolumeController {
     try {
       await this.getVolume();
       await this.getEvents();
-      if (this.volume.PersistentVolumeClaim.StorageClass !== undefined) {
-        this.state.volumeSharedAccessPolicy = this.volume.PersistentVolumeClaim.StorageClass.AccessModes[this.volume.PersistentVolumeClaim.StorageClass.AccessModes.length - 1];
+      if (this.volume.PersistentVolumeClaim.storageClass !== undefined) {
+        this.state.volumeSharedAccessPolicies = this.volume.PersistentVolumeClaim.AccessModes;
         let policies = KubernetesStorageClassAccessPolicies();
-
-        policies.forEach((policy) => {
-          if (policy.Name == this.state.volumeSharedAccessPolicy) {
-            this.state.volumeSharedAccessPolicyTooltip = policy.Description;
-          }
+        this.state.volumeSharedAccessPolicyTooltips = this.state.volumeSharedAccessPolicies.map((policy) => {
+          const matchingPolicy = policies.find((p) => p.Name === policy);
+          return matchingPolicy ? matchingPolicy.Description : undefined;
         });
       }
     } catch (err) {

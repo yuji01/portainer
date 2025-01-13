@@ -4,19 +4,20 @@ package binary
 // The functionality does not rely on the implementation of `HelmPackageManager`
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"path"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/portainer/portainer/pkg/libhelm/options"
+
+	"github.com/pkg/errors"
+	"github.com/segmentio/encoding/json"
 	"gopkg.in/yaml.v3"
 )
 
 var errRequiredSearchOptions = errors.New("repo is required")
+var errInvalidRepoURL = errors.New("the request failed since either the Helm repository was not found or the index.yaml is not valid")
 
 type File struct {
 	APIVersion string             `yaml:"apiVersion" json:"apiVersion"`
@@ -51,38 +52,67 @@ func (hbpm *helmBinaryPackageManager) SearchRepo(searchRepoOpts options.SearchRe
 	}
 
 	client := searchRepoOpts.Client
-	if searchRepoOpts.Client == nil {
+
+	if client == nil {
 		// The current index.yaml is ~9MB on bitnami.
 		// At a slow @2mbit download = 40s. @100bit = ~1s.
 		// I'm seeing 3 - 4s over wifi.
 		// Give ample time but timeout for now.  Can be improved in the future
 		client = &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout:   300 * time.Second,
+			Transport: http.DefaultTransport,
 		}
+	}
+
+	// Allow redirect behavior to be overridden if specified.
+	if client.CheckRedirect == nil {
+		client.CheckRedirect = defaultCheckRedirect
 	}
 
 	url, err := url.ParseRequestURI(searchRepoOpts.Repo)
 	if err != nil {
-		return nil, errors.Wrap(err, fmt.Sprintf("invalid helm chart URL: %s", searchRepoOpts.Repo))
+		return nil, errors.Wrap(err, "invalid helm chart URL: "+searchRepoOpts.Repo)
 	}
 
 	url.Path = path.Join(url.Path, "index.yaml")
 	resp, err := client.Get(url.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to get index file")
+		return nil, errInvalidRepoURL
 	}
 	defer resp.Body.Close()
 
 	var file File
 	err = yaml.NewDecoder(resp.Body).Decode(&file)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to decode index file")
+		return nil, errInvalidRepoURL
+	}
+
+	// Validate index.yaml
+	if file.APIVersion == "" || file.Entries == nil {
+		return nil, errInvalidRepoURL
 	}
 
 	result, err := json.Marshal(file)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal index file")
+		return nil, errInvalidRepoURL
 	}
 
 	return result, nil
+}
+
+// defaultCheckRedirect is a default CheckRedirect for helm
+// We don't allow redirects to URLs not ending in index.yaml
+// After that we follow the go http client behavior which is to stop
+// after a maximum of 10 redirects
+func defaultCheckRedirect(req *http.Request, via []*http.Request) error {
+	// The request url must end in index.yaml
+	if path.Base(req.URL.Path) != "index.yaml" {
+		return errors.New("the request URL must end in index.yaml")
+	}
+
+	// default behavior below
+	if len(via) >= 10 {
+		return errors.New("stopped after 10 redirects")
+	}
+	return nil
 }

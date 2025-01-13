@@ -8,13 +8,15 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 
+import { AutomationTestingProps } from '@/types';
+
 import { defaultGetRowId } from './defaultGetRowId';
 import { Table } from './Table';
 import { NestedTable } from './NestedTable';
 import { DatatableContent } from './DatatableContent';
-import { BasicTableSettings } from './types';
+import { BasicTableSettings, DefaultType } from './types';
 
-interface Props<D extends Record<string, unknown>> {
+interface Props<D extends DefaultType> extends AutomationTestingProps {
   dataset: D[];
   columns: TableOptions<D>['columns'];
 
@@ -23,9 +25,16 @@ interface Props<D extends Record<string, unknown>> {
   initialTableState?: Partial<TableState>;
   isLoading?: boolean;
   initialSortBy?: BasicTableSettings['sortBy'];
+
+  /**
+   * keyword to filter by
+   */
+  search?: string;
+
+  'aria-label'?: string;
 }
 
-export function NestedDatatable<D extends Record<string, unknown>>({
+export function NestedDatatable<D extends DefaultType>({
   columns,
   dataset,
   getRowId = defaultGetRowId,
@@ -33,6 +42,9 @@ export function NestedDatatable<D extends Record<string, unknown>>({
   initialTableState = {},
   isLoading,
   initialSortBy,
+  search,
+  'data-cy': dataCy,
+  'aria-label': ariaLabel,
 }: Props<D>) {
   const tableInstance = useReactTable<D>({
     columns,
@@ -45,6 +57,9 @@ export function NestedDatatable<D extends Record<string, unknown>>({
       enableColumnFilter: false,
       enableHiding: false,
     },
+    state: {
+      globalFilter: search,
+    },
     getRowId,
     autoResetExpanded: false,
     getCoreRowModel: getCoreRowModel(),
@@ -55,12 +70,14 @@ export function NestedDatatable<D extends Record<string, unknown>>({
 
   return (
     <NestedTable>
-      <Table.Container>
+      <Table.Container noWidget>
         <DatatableContent<D>
           tableInstance={tableInstance}
           isLoading={isLoading}
           emptyContentLabel={emptyContentLabel}
           renderRow={(row) => <Table.Row<D> cells={row.getVisibleCells()} />}
+          aria-label={ariaLabel}
+          data-cy={dataCy}
         />
       </Table.Container>
     </NestedTable>

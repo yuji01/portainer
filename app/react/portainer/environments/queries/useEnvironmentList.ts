@@ -1,4 +1,4 @@
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 import { withError } from '@/react-tools/react-query';
 
@@ -8,14 +8,32 @@ import {
   getEnvironments,
 } from '../environment.service';
 
+import { environmentQueryKeys } from './query-keys';
+
 export const ENVIRONMENTS_POLLING_INTERVAL = 30000; // in ms
 
-export interface Query extends EnvironmentsQueryParams {
+export const SortOptions = [
+  'Name',
+  'Group',
+  'Status',
+  'LastCheckIn',
+  'EdgeID',
+] as const;
+export type SortType = (typeof SortOptions)[number];
+export function isSortType(value?: string): value is SortType {
+  return SortOptions.includes(value as SortType);
+}
+
+export function getSortType(value?: string): SortType | undefined {
+  return isSortType(value) ? value : undefined;
+}
+
+export type Query = EnvironmentsQueryParams & {
   page?: number;
   pageLimit?: number;
-  sort?: string;
+  sort?: SortType;
   order?: 'asc' | 'desc';
-}
+};
 
 type GetEndpointsResponse = Awaited<ReturnType<typeof getEnvironments>>;
 
@@ -37,16 +55,22 @@ export function refetchIfAnyOffline(data?: GetEndpointsResponse) {
 
 export function useEnvironmentList(
   { page = 1, pageLimit = 100, sort, order, ...query }: Query = {},
-  refetchInterval?:
-    | number
-    | false
-    | ((data?: GetEndpointsResponse) => false | number),
-  staleTime = 0,
-  enabled = true
+  {
+    enabled,
+    refetchInterval,
+    staleTime,
+  }: {
+    refetchInterval?:
+      | number
+      | false
+      | ((data?: GetEndpointsResponse) => false | number);
+    staleTime?: number;
+    enabled?: boolean;
+  } = {}
 ) {
   const { isLoading, data } = useQuery(
     [
-      'environments',
+      ...environmentQueryKeys.base(),
       {
         page,
         pageLimit,
@@ -57,6 +81,7 @@ export function useEnvironmentList(
     ],
     async () => {
       const start = (page - 1) * pageLimit + 1;
+
       return getEnvironments({
         start,
         limit: pageLimit,

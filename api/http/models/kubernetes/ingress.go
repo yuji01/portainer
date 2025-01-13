@@ -44,6 +44,7 @@ type (
 		Port        int    `json:"Port"`
 		Path        string `json:"Path"`
 		PathType    string `json:"PathType"`
+		HasService  bool   `json:"HasService"`
 	}
 
 	// K8sIngressDeleteRequests is a mapping of namespace names to a slice of
@@ -59,9 +60,11 @@ func (r K8sIngressInfo) Validate(request *http.Request) error {
 	if r.Name == "" {
 		return errors.New("missing ingress name from the request payload")
 	}
+
 	if r.Namespace == "" {
 		return errors.New("missing ingress Namespace from the request payload")
 	}
+
 	return nil
 }
 
@@ -69,10 +72,12 @@ func (r K8sIngressDeleteRequests) Validate(request *http.Request) error {
 	if len(r) == 0 {
 		return errors.New("missing deletion request list in payload")
 	}
+
 	for ns := range r {
 		if len(ns) == 0 {
 			return errors.New("deletion given with empty namespace")
 		}
 	}
+
 	return nil
 }

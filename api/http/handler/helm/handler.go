@@ -3,8 +3,6 @@ package helm
 import (
 	"net/http"
 
-	"github.com/gorilla/mux"
-	httperror "github.com/portainer/libhttp/error"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
 	"github.com/portainer/portainer/api/http/middlewares"
@@ -12,25 +10,24 @@ import (
 	"github.com/portainer/portainer/api/kubernetes"
 	"github.com/portainer/portainer/pkg/libhelm"
 	"github.com/portainer/portainer/pkg/libhelm/options"
-)
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
 
-type requestBouncer interface {
-	AuthenticatedAccess(h http.Handler) http.Handler
-}
+	"github.com/gorilla/mux"
+)
 
 // Handler is the HTTP handler used to handle environment(endpoint) group operations.
 type Handler struct {
 	*mux.Router
-	requestBouncer           requestBouncer
+	requestBouncer           security.BouncerService
 	dataStore                dataservices.DataStore
-	jwtService               dataservices.JWTService
+	jwtService               portainer.JWTService
 	kubeClusterAccessService kubernetes.KubeClusterAccessService
 	kubernetesDeployer       portainer.KubernetesDeployer
 	helmPackageManager       libhelm.HelmPackageManager
 }
 
 // NewHandler creates a handler to manage endpoint group operations.
-func NewHandler(bouncer requestBouncer, dataStore dataservices.DataStore, jwtService dataservices.JWTService, kubernetesDeployer portainer.KubernetesDeployer, helmPackageManager libhelm.HelmPackageManager, kubeClusterAccessService kubernetes.KubeClusterAccessService) *Handler {
+func NewHandler(bouncer security.BouncerService, dataStore dataservices.DataStore, jwtService portainer.JWTService, kubernetesDeployer portainer.KubernetesDeployer, helmPackageManager libhelm.HelmPackageManager, kubeClusterAccessService kubernetes.KubeClusterAccessService) *Handler {
 	h := &Handler{
 		Router:                   mux.NewRouter(),
 		requestBouncer:           bouncer,
@@ -41,42 +38,46 @@ func NewHandler(bouncer requestBouncer, dataStore dataservices.DataStore, jwtSer
 		kubeClusterAccessService: kubeClusterAccessService,
 	}
 
-	h.Use(middlewares.WithEndpoint(dataStore.Endpoint(), "id"))
+	h.Use(middlewares.WithEndpoint(dataStore.Endpoint(), "id"),
+		bouncer.AuthenticatedAccess)
 
 	// `helm list -o json`
 	h.Handle("/{id}/kubernetes/helm",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.helmList))).Methods(http.MethodGet)
+		httperror.LoggerHandler(h.helmList)).Methods(http.MethodGet)
 
 	// `helm delete RELEASE_NAME`
 	h.Handle("/{id}/kubernetes/helm/{release}",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.helmDelete))).Methods(http.MethodDelete)
+		httperror.LoggerHandler(h.helmDelete)).Methods(http.MethodDelete)
 
 	// `helm install [NAME] [CHART] flags`
 	h.Handle("/{id}/kubernetes/helm",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.helmInstall))).Methods(http.MethodPost)
+		httperror.LoggerHandler(h.helmInstall)).Methods(http.MethodPost)
 
+	// Deprecated
 	h.Handle("/{id}/kubernetes/helm/repositories",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.userGetHelmRepos))).Methods(http.MethodGet)
+		httperror.LoggerHandler(h.userGetHelmRepos)).Methods(http.MethodGet)
 	h.Handle("/{id}/kubernetes/helm/repositories",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.userCreateHelmRepo))).Methods(http.MethodPost)
+		httperror.LoggerHandler(h.userCreateHelmRepo)).Methods(http.MethodPost)
 
 	return h
 }
 
 // NewTemplateHandler creates a template handler to manage environment(endpoint) group operations.
-func NewTemplateHandler(bouncer requestBouncer, helmPackageManager libhelm.HelmPackageManager) *Handler {
+func NewTemplateHandler(bouncer security.BouncerService, helmPackageManager libhelm.HelmPackageManager) *Handler {
 	h := &Handler{
 		Router:             mux.NewRouter(),
 		helmPackageManager: helmPackageManager,
 		requestBouncer:     bouncer,
 	}
 
+	h.Use(bouncer.AuthenticatedAccess)
+
 	h.Handle("/templates/helm",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.helmRepoSearch))).Methods(http.MethodGet)
+		httperror.LoggerHandler(h.helmRepoSearch)).Methods(http.MethodGet)
 
 	// helm show [COMMAND] [CHART] [REPO] flags
 	h.Handle("/templates/helm/{command:chart|values|readme}",
-		bouncer.AuthenticatedAccess(httperror.LoggerHandler(h.helmShow))).Methods(http.MethodGet)
+		httperror.LoggerHandler(h.helmShow)).Methods(http.MethodGet)
 
 	return h
 }
@@ -95,7 +96,7 @@ func (handler *Handler) getHelmClusterAccess(r *http.Request) (*options.Kubernet
 		return nil, httperror.InternalServerError("Unable to retrieve user authentication token", err)
 	}
 
-	bearerToken, err := handler.jwtService.GenerateToken(tokenData)
+	bearerToken, _, err := handler.jwtService.GenerateToken(tokenData)
 	if err != nil {
 		return nil, httperror.Unauthorized("Unauthorized", err)
 	}
@@ -110,7 +111,7 @@ func (handler *Handler) getHelmClusterAccess(r *http.Request) (*options.Kubernet
 		hostURL = r.Host
 	}
 
-	kubeConfigInternal := handler.kubeClusterAccessService.GetData(hostURL, endpoint.ID)
+	kubeConfigInternal := handler.kubeClusterAccessService.GetClusterDetails(hostURL, endpoint.ID, true)
 	return &options.KubernetesClusterAccess{
 		ClusterServerURL:         kubeConfigInternal.ClusterServerURL,
 		CertificateAuthorityFile: kubeConfigInternal.CertificateAuthorityFile,

@@ -2,9 +2,7 @@ package exec
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path"
@@ -13,8 +11,10 @@ import (
 
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/dataservices"
-	"github.com/portainer/portainer/api/internal/registryutils"
 	"github.com/portainer/portainer/api/stacks/stackutils"
+
+	"github.com/rs/zerolog/log"
+	"github.com/segmentio/encoding/json"
 )
 
 // SwarmStackManager represents a service for managing stacks.
@@ -45,8 +45,7 @@ func NewSwarmStackManager(
 		dataStore:            datastore,
 	}
 
-	err := manager.updateDockerCLIConfiguration(manager.configPath)
-	if err != nil {
+	if err := manager.updateDockerCLIConfiguration(manager.configPath); err != nil {
 		return nil, err
 	}
 
@@ -62,18 +61,18 @@ func (manager *SwarmStackManager) Login(registries []portainer.Registry, endpoin
 
 	for _, registry := range registries {
 		if registry.Authentication {
-			err = registryutils.EnsureRegTokenValid(manager.dataStore, &registry)
+			username, password, err := getEffectiveRegUsernamePassword(manager.dataStore, &registry)
 			if err != nil {
-				return err
-			}
-
-			username, password, err := registryutils.GetRegEffectiveCredential(&registry)
-			if err != nil {
-				return err
+				continue
 			}
 
 			registryArgs := append(args, "login", "--username", username, "--password", password, registry.URL)
-			runCommandAndCaptureStdErr(command, registryArgs, nil, "")
+			if err := runCommandAndCaptureStdErr(command, registryArgs, nil, ""); err != nil {
+				log.Warn().
+					Err(err).
+					Str("RegistryName", registry.Name).
+					Msg("Failed to login.")
+			}
 		}
 	}
 
@@ -135,17 +134,20 @@ func (manager *SwarmStackManager) Remove(stack *portainer.Stack, endpoint *porta
 
 func runCommandAndCaptureStdErr(command string, args []string, env []string, workingDir string) error {
 	var stderr bytes.Buffer
+
 	cmd := exec.Command(command, args...)
 	cmd.Stderr = &stderr
-	cmd.Dir = workingDir
+
+	if workingDir != "" {
+		cmd.Dir = workingDir
+	}
 
 	if env != nil {
 		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, env...)
 	}
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return errors.New(stderr.String())
 	}
 
@@ -165,11 +167,12 @@ func (manager *SwarmStackManager) prepareDockerCommandAndArgs(binaryPath, config
 
 	endpointURL := endpoint.URL
 	if endpoint.Type == portainer.EdgeAgentOnDockerEnvironment {
-		tunnel, err := manager.reverseTunnelService.GetActiveTunnel(endpoint)
+		tunnelAddr, err := manager.reverseTunnelService.TunnelAddr(endpoint)
 		if err != nil {
 			return "", nil, err
 		}
-		endpointURL = fmt.Sprintf("tcp://127.0.0.1:%d", tunnel.Port)
+
+		endpointURL = "tcp://" + tunnelAddr
 	}
 
 	args = append(args, "-H", endpointURL)
@@ -193,9 +196,10 @@ func (manager *SwarmStackManager) prepareDockerCommandAndArgs(binaryPath, config
 
 func (manager *SwarmStackManager) updateDockerCLIConfiguration(configPath string) error {
 	configFilePath := path.Join(configPath, "config.json")
+
 	config, err := manager.retrieveConfigurationFromDisk(configFilePath)
 	if err != nil {
-		return err
+		log.Warn().Err(err).Msg("unable to retrieve the Swarm configuration from disk, proceeding without it")
 	}
 
 	signature, err := manager.signatureService.CreateSignature(portainer.PortainerAgentSignatureMessage)
@@ -204,10 +208,10 @@ func (manager *SwarmStackManager) updateDockerCLIConfiguration(configPath string
 	}
 
 	if config["HttpHeaders"] == nil {
-		config["HttpHeaders"] = make(map[string]interface{})
+		config["HttpHeaders"] = make(map[string]any)
 	}
 
-	headersObject := config["HttpHeaders"].(map[string]interface{})
+	headersObject := config["HttpHeaders"].(map[string]any)
 	headersObject["X-PortainerAgent-ManagerOperation"] = "1"
 	headersObject["X-PortainerAgent-Signature"] = signature
 	headersObject["X-PortainerAgent-PublicKey"] = manager.signatureService.EncodedPublicKey()
@@ -215,16 +219,15 @@ func (manager *SwarmStackManager) updateDockerCLIConfiguration(configPath string
 	return manager.fileService.WriteJSONToFile(configFilePath, config)
 }
 
-func (manager *SwarmStackManager) retrieveConfigurationFromDisk(path string) (map[string]interface{}, error) {
-	var config map[string]interface{}
+func (manager *SwarmStackManager) retrieveConfigurationFromDisk(path string) (map[string]any, error) {
+	var config map[string]any
 
 	raw, err := manager.fileService.GetFileContent(path, "")
 	if err != nil {
-		return make(map[string]interface{}), nil
+		return make(map[string]any), nil
 	}
 
-	err = json.Unmarshal(raw, &config)
-	if err != nil {
+	if err := json.Unmarshal(raw, &config); err != nil {
 		return nil, err
 	}
 

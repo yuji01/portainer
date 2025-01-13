@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,8 +16,9 @@ import (
 )
 
 // NewStore initializes a new Store and the associated services
-func NewStore(storePath string, fileService portainer.FileService, connection portainer.Connection) *Store {
+func NewStore(cliFlags *portainer.CLIFlags, fileService portainer.FileService, connection portainer.Connection) *Store {
 	return &Store{
+		flags:       cliFlags,
 		fileService: fileService,
 		connection:  connection,
 	}
@@ -30,8 +32,14 @@ func (store *Store) Open() (newStore bool, err error) {
 	}
 
 	if encryptionReq {
+		backupFilename, err := store.Backup("")
+		if err != nil {
+			return false, fmt.Errorf("failed to backup database prior to encrypting: %w", err)
+		}
+
 		err = store.encryptDB()
 		if err != nil {
+			store.RestoreFromFile(backupFilename) // restore from backup if encryption fails
 			return false, err
 		}
 	}
@@ -104,7 +112,7 @@ func (store *Store) edition() portainer.SoftwareEdition {
 
 // TODO: move the use of this to dataservices.IsErrObjectNotFound()?
 func (store *Store) IsErrObjectNotFound(e error) bool {
-	return e == portainerErrors.ErrObjectNotFound
+	return errors.Is(e, portainerErrors.ErrObjectNotFound)
 }
 
 func (store *Store) Connection() portainer.Connection {

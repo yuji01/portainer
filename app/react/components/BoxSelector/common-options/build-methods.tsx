@@ -1,6 +1,7 @@
 import { Edit, FileText, Globe, UploadCloud } from 'lucide-react';
 
 import GitIcon from '@/assets/ico/git.svg?c';
+import Helm from '@/assets/ico/helm.svg?c';
 
 import { BoxSelectorOption } from '../types';
 
@@ -9,7 +10,6 @@ export const editor: BoxSelectorOption<'editor'> = {
   icon: Edit,
   iconType: 'badge',
   label: 'Web editor',
-  description: 'Use our Web editor',
   value: 'editor',
 };
 
@@ -18,7 +18,6 @@ export const upload: BoxSelectorOption<'upload'> = {
   icon: UploadCloud,
   iconType: 'badge',
   label: 'Upload',
-  description: 'Upload from your computer',
   value: 'upload',
 };
 
@@ -27,7 +26,6 @@ export const git: BoxSelectorOption<'repository'> = {
   icon: GitIcon,
   iconType: 'logo',
   label: 'Repository',
-  description: 'Use a git repository',
   value: 'repository',
 };
 
@@ -36,7 +34,7 @@ export const edgeStackTemplate: BoxSelectorOption<'template'> = {
   icon: FileText,
   iconType: 'badge',
   label: 'Template',
-  description: 'Use an Edge stack template',
+  description: 'Use an Edge stack app or custom template',
   value: 'template',
 };
 
@@ -45,8 +43,15 @@ export const customTemplate: BoxSelectorOption<'template'> = {
   icon: FileText,
   iconType: 'badge',
   label: 'Custom template',
-  description: 'Use a custom template',
   value: 'template',
+};
+
+export const helm: BoxSelectorOption<'helm'> = {
+  id: 'method_helm',
+  icon: Helm,
+  label: 'Helm chart',
+  value: 'helm',
+  iconClass: '!text-[#0f1689] th-dark:!text-white th-highcontrast:!text-white',
 };
 
 export const url: BoxSelectorOption<'url'> = {
@@ -54,6 +59,5 @@ export const url: BoxSelectorOption<'url'> = {
   icon: Globe,
   iconType: 'badge',
   label: 'URL',
-  description: 'Specify a URL to a file',
   value: 'url',
 };

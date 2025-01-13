@@ -1,18 +1,24 @@
-import { User, Clock, Edit, ChevronDown, ChevronUp } from 'lucide-react';
+import { User, Clock, Info } from 'lucide-react';
 import moment from 'moment';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pod } from 'kubernetes-types/core/v1';
 import { useCurrentStateAndParams } from '@uirouter/react';
 
 import { Authorized } from '@/react/hooks/useUser';
 import { notifyError, notifySuccess } from '@/portainer/services/notifications';
+import { usePublicSettings } from '@/react/portainer/settings/queries';
+import { GlobalDeploymentOptions } from '@/react/portainer/settings/types';
 
 import { DetailsTable } from '@@/DetailsTable';
-import { Badge } from '@@/Badge';
 import { Link } from '@@/Link';
-import { Button, LoadingButton } from '@@/buttons';
+import { LoadingButton } from '@@/buttons';
+import { WidgetBody, Widget } from '@@/Widget';
+import { InlineLoader } from '@@/InlineLoader';
+import { Icon } from '@@/Icon';
+import { Note } from '@@/Note';
+import { ExternalBadge } from '@@/Badge/ExternalBadge';
+import { SystemBadge } from '@@/Badge/SystemBadge';
 
-import { isSystemNamespace } from '../../namespaces/utils';
 import {
   appStackNameLabel,
   appKindToDeploymentTypeMap,
@@ -28,11 +34,10 @@ import {
   getTotalPods,
   isExternalApplication,
 } from '../utils';
-import {
-  useApplication,
-  usePatchApplicationMutation,
-} from '../application.queries';
-import { Application } from '../types';
+import { Application, ApplicationPatch } from '../types';
+import { useNamespaceQuery } from '../../namespaces/queries/useNamespaceQuery';
+import { useApplication } from '../queries/useApplication';
+import { usePatchApplicationMutation } from '../queries/usePatchApplicationMutation';
 
 export function ApplicationSummaryWidget() {
   const stateAndParams = useCurrentStateAndParams();
@@ -44,14 +49,15 @@ export function ApplicationSummaryWidget() {
       endpointId: environmentId,
     },
   } = stateAndParams;
-  const applicationQuery = useApplication(
+  const { data: application, ...applicationQuery } = useApplication(
     environmentId,
     namespace,
     name,
     resourceType
   );
-  const application = applicationQuery.data;
-  const systemNamespace = isSystemNamespace(namespace);
+  const namespaceData = useNamespaceQuery(environmentId, namespace);
+  const isSystemNamespace = namespaceData.data?.IsSystem;
+
   const externalApplication = application && isExternalApplication(application);
   const applicationRequests = application && getResourceRequests(application);
   const applicationOwner = application?.metadata?.labels?.[appOwnerLabel];
@@ -59,9 +65,20 @@ export function ApplicationSummaryWidget() {
   const applicationNote =
     application?.metadata?.annotations?.[appNoteAnnotation];
 
-  const [isNoteOpen, setIsNoteOpen] = useState(true);
-  const [applicationNoteFormValues, setApplicationNoteFormValues] = useState(
-    applicationNote || ''
+  const [applicationNoteFormValues, setApplicationNoteFormValues] =
+    useState('');
+
+  useEffect(() => {
+    setApplicationNoteFormValues(applicationNote || '');
+  }, [applicationNote]);
+
+  const globalDeploymentOptionsQuery =
+    usePublicSettings<GlobalDeploymentOptions>({
+      select: (settings) => settings.GlobalDeploymentOptions,
+    });
+
+  const failedCreateCondition = application?.status?.conditions?.find(
+    (condition) => condition.reason === 'FailedCreate'
   );
   const patchApplicationMutation = usePatchApplicationMutation(
     environmentId,
@@ -70,203 +87,224 @@ export function ApplicationSummaryWidget() {
   );
 
   return (
-    <div className="p-5">
-      <DetailsTable>
-        <tr>
-          <td>Name</td>
-          <td>
-            <div
-              className="flex items-center gap-x-2"
-              data-cy="k8sAppDetail-appName"
-            >
-              {name}
-              {externalApplication && !systemNamespace && (
-                <Badge type="info">external</Badge>
-              )}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>Stack</td>
-          <td data-cy="k8sAppDetail-stackName">
-            {application?.metadata?.labels?.[appStackNameLabel] || '-'}
-          </td>
-        </tr>
-        <tr>
-          <td>Namespace</td>
-          <td>
-            <div
-              className="flex items-center gap-x-2"
-              data-cy="k8sAppDetail-resourcePoolName"
-            >
-              <Link
-                to="kubernetes.resourcePools.resourcePool"
-                params={{ id: namespace }}
-              >
-                {namespace}
-              </Link>
-              {systemNamespace && <Badge type="info">system</Badge>}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td>Application type</td>
-          <td data-cy="k8sAppDetail-appType">{application?.kind || '-'}</td>
-        </tr>
-        {application?.kind && (
-          <tr>
-            <td>Status</td>
-            {applicationIsKind<Pod>('Pod', application) && (
-              <td data-cy="k8sAppDetail-appType">
-                {application?.status?.phase}
-              </td>
+    <div className="row">
+      <div className="col-sm-12">
+        <Widget>
+          <WidgetBody>
+            {applicationQuery.isLoading && (
+              <InlineLoader>Loading application...</InlineLoader>
             )}
-            {!applicationIsKind<Pod>('Pod', application) && (
-              <td data-cy="k8sAppDetail-appType">
-                {appKindToDeploymentTypeMap[application.kind]}
-                <code className="ml-1">
-                  {getRunningPods(application)}
-                </code> / <code>{getTotalPods(application)}</code>
-              </td>
-            )}
-          </tr>
-        )}
-        {(!!applicationRequests?.cpu || !!applicationRequests?.memoryBytes) && (
-          <tr>
-            <td>
-              Resource reservations
-              {!applicationIsKind<Pod>('Pod', application) && (
-                <div className="text-muted small">per instance</div>
-              )}
-            </td>
-            <td>
-              {!!applicationRequests?.cpu && (
-                <div data-cy="k8sAppDetail-cpuReservation">
-                  CPU {applicationRequests.cpu}
-                </div>
-              )}
-              {!!applicationRequests?.memoryBytes && (
-                <div data-cy="k8sAppDetail-memoryReservation">
-                  Memory{' '}
-                  {bytesToReadableFormat(applicationRequests.memoryBytes)}
-                </div>
-              )}
-            </td>
-          </tr>
-        )}
-        <tr>
-          <td>Creation</td>
-          <td>
-            <div className="flex flex-wrap items-center gap-3">
-              {applicationOwner && (
-                <span
-                  className="flex items-center gap-1"
-                  data-cy="k8sAppDetail-owner"
-                >
-                  <User />
-                  {applicationOwner}
-                </span>
-              )}
-              <span
-                className="flex items-center gap-1"
-                data-cy="k8sAppDetail-creationDate"
-              >
-                <Clock />
-                {moment(application?.metadata?.creationTimestamp).format(
-                  'YYYY-MM-DD HH:mm:ss'
-                )}
-              </span>
-              {(!externalApplication || systemNamespace) && (
-                <span
-                  className="flex items-center gap-1"
-                  data-cy="k8sAppDetail-creationMethod"
-                >
-                  <Clock />
-                  Deployed from {applicationDeployMethod}
-                </span>
-              )}
-            </div>
-          </td>
-        </tr>
-        <tr>
-          <td colSpan={2}>
-            <form className="form-horizontal">
-              <div className="form-group">
-                <div className="col-sm-12 vertical-center">
-                  <Edit /> Note
-                  <Button
-                    size="xsmall"
-                    type="button"
-                    color="light"
-                    data-cy="k8sAppDetail-expandNoteButton"
-                    onClick={() => setIsNoteOpen(!isNoteOpen)}
+            {application && (
+              <>
+                {failedCreateCondition && (
+                  <div
+                    className="alert alert-danger mb-2 flex items-start gap-1"
+                    data-cy="k8sAppDetail-failedCreateMessage"
                   >
-                    {isNoteOpen ? 'Collapse' : 'Expand'}
-                    {isNoteOpen ? <ChevronUp /> : <ChevronDown />}
-                  </Button>
-                </div>
-              </div>
-
-              {isNoteOpen && (
-                <>
-                  <div className="form-group">
-                    <div className="col-sm-12">
-                      <textarea
-                        className="form-control resize-y"
-                        name="application_note"
-                        id="application_note"
-                        value={applicationNoteFormValues}
-                        onChange={(e) =>
-                          setApplicationNoteFormValues(e.target.value)
-                        }
-                        rows={5}
-                        placeholder="Enter a note about this application..."
+                    <div className="mt-0.5">
+                      <Icon
+                        icon={Info}
+                        className="mr-1 shrink-0"
+                        mode="danger"
                       />
                     </div>
-                  </div>
-
-                  <Authorized authorizations="K8sApplicationDetailsW">
-                    <div className="form-group">
-                      <div className="col-sm-12">
-                        <LoadingButton
-                          color="primary"
-                          size="small"
-                          className="!ml-0"
-                          type="button"
-                          onClick={() => patchApplicationNote()}
-                          disabled={
-                            // disable if there is no change to the note, or it's updating
-                            applicationNoteFormValues ===
-                              (applicationNote || '') ||
-                            patchApplicationMutation.isLoading
-                          }
-                          data-cy="k8sAppDetail-saveNoteButton"
-                          isLoading={patchApplicationMutation.isLoading}
-                          loadingText={applicationNote ? 'Updating' : 'Saving'}
-                        >
-                          {applicationNote ? 'Update' : 'Save'} note
-                        </LoadingButton>
+                    <div>
+                      <div className="font-semibold">
+                        Failed to create application
                       </div>
+                      {failedCreateCondition.message}
                     </div>
-                  </Authorized>
-                </>
-              )}
-            </form>
-          </td>
-        </tr>
-      </DetailsTable>
+                  </div>
+                )}
+                <DetailsTable dataCy="k8sAppDetail-table">
+                  <tr>
+                    <td>Name</td>
+                    <td>
+                      <div
+                        className="flex items-center gap-x-2"
+                        data-cy="k8sAppDetail-appName"
+                      >
+                        {name}
+                        {externalApplication && !isSystemNamespace && (
+                          <ExternalBadge />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  {globalDeploymentOptionsQuery.data &&
+                    !globalDeploymentOptionsQuery.data
+                      .hideStacksFunctionality && (
+                      <tr>
+                        <td>Stack</td>
+                        <td data-cy="k8sAppDetail-stackName">
+                          {application?.metadata?.labels?.[appStackNameLabel] ||
+                            '-'}
+                        </td>
+                      </tr>
+                    )}
+                  <tr>
+                    <td>Namespace</td>
+                    <td>
+                      <div
+                        className="flex items-center gap-x-2"
+                        data-cy="k8sAppDetail-resourcePoolName"
+                      >
+                        <Link
+                          to="kubernetes.resourcePools.resourcePool"
+                          data-cy="k8sAppDetail-namespaceLink"
+                          params={{ id: namespace }}
+                        >
+                          {namespace}
+                        </Link>
+                        {isSystemNamespace && <SystemBadge />}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Application type</td>
+                    <td data-cy="k8sAppDetail-appType">
+                      {application?.kind || '-'}
+                    </td>
+                  </tr>
+                  {application?.kind && (
+                    <tr>
+                      <td>Status</td>
+                      {applicationIsKind<Pod>('Pod', application) && (
+                        <td data-cy="k8sAppDetail-appType">
+                          {application?.status?.phase}
+                        </td>
+                      )}
+                      {!applicationIsKind<Pod>('Pod', application) && (
+                        <td data-cy="k8sAppDetail-appType">
+                          {appKindToDeploymentTypeMap[application.kind]}
+                          <code className="ml-1">
+                            {getRunningPods(application)}
+                          </code>{' '}
+                          / <code>{getTotalPods(application)}</code>
+                        </td>
+                      )}
+                    </tr>
+                  )}
+                  {(!!applicationRequests?.cpu ||
+                    !!applicationRequests?.memoryBytes) && (
+                    <tr>
+                      <td>
+                        Resource reservations
+                        {!applicationIsKind<Pod>('Pod', application) && (
+                          <div className="text-muted small">per instance</div>
+                        )}
+                      </td>
+                      <td>
+                        {!!applicationRequests?.cpu && (
+                          <div data-cy="k8sAppDetail-cpuReservation">
+                            CPU {applicationRequests.cpu}
+                          </div>
+                        )}
+                        {!!applicationRequests?.memoryBytes && (
+                          <div data-cy="k8sAppDetail-memoryReservation">
+                            Memory{' '}
+                            {bytesToReadableFormat(
+                              applicationRequests.memoryBytes
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  <tr>
+                    <td>Creation</td>
+                    <td>
+                      <div className="flex flex-wrap items-center gap-3">
+                        {applicationOwner && (
+                          <span
+                            className="flex items-center gap-1"
+                            data-cy="k8sAppDetail-owner"
+                          >
+                            <User />
+                            {applicationOwner}
+                          </span>
+                        )}
+                        <span
+                          className="flex items-center gap-1"
+                          data-cy="k8sAppDetail-creationDate"
+                        >
+                          <Clock />
+                          {moment(
+                            application?.metadata?.creationTimestamp
+                          ).format('YYYY-MM-DD HH:mm:ss')}
+                        </span>
+                        {(!externalApplication || isSystemNamespace) && (
+                          <span
+                            className="flex items-center gap-1"
+                            data-cy="k8sAppDetail-creationMethod"
+                          >
+                            <Clock />
+                            Deployed from {applicationDeployMethod}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={2}>
+                      <form className="form-horizontal">
+                        <Note
+                          value={applicationNoteFormValues}
+                          onChange={setApplicationNoteFormValues}
+                          defaultIsOpen
+                          isExpandable
+                        />
+                        <Authorized authorizations="K8sApplicationDetailsW">
+                          <div className="form-group">
+                            <div className="col-sm-12">
+                              <LoadingButton
+                                color="primary"
+                                size="small"
+                                className="!ml-0"
+                                type="button"
+                                onClick={() => patchApplicationNote()}
+                                disabled={
+                                  // disable if there is no change to the note, or it's updating
+                                  applicationNoteFormValues ===
+                                    (applicationNote || '') ||
+                                  patchApplicationMutation.isLoading
+                                }
+                                data-cy="k8sAppDetail-saveNoteButton"
+                                isLoading={patchApplicationMutation.isLoading}
+                                loadingText={
+                                  applicationNote ? 'Updating' : 'Saving'
+                                }
+                              >
+                                {applicationNote ? 'Update' : 'Save'} note
+                              </LoadingButton>
+                            </div>
+                          </div>
+                        </Authorized>
+                      </form>
+                    </td>
+                  </tr>
+                </DetailsTable>
+              </>
+            )}
+          </WidgetBody>
+        </Widget>
+      </div>
     </div>
   );
 
   async function patchApplicationNote() {
-    const path = `/metadata/annotations/${appNoteAnnotation}`;
-    const value = applicationNoteFormValues;
+    const patch: ApplicationPatch = [
+      {
+        op: 'replace',
+        path: `/metadata/annotations/${appNoteAnnotation}`,
+        value: applicationNoteFormValues,
+      },
+    ];
     if (application?.kind) {
       try {
         await patchApplicationMutation.mutateAsync({
           appKind: application.kind,
-          path,
-          value,
+          patch,
         });
         notifySuccess('Success', 'Application successfully updated');
       } catch (error) {

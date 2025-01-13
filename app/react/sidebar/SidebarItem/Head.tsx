@@ -7,18 +7,13 @@ import clsx from 'clsx';
 import { ComponentProps } from 'react';
 import Tippy from '@tippyjs/react';
 
-import { AutomationTestingProps } from '@/types';
-
 import 'tippy.js/dist/tippy.css';
 import { Link } from '@@/Link';
 import { IconProps, Icon } from '@@/Icon';
 
 import { useSidebarState } from '../useSidebarState';
 
-interface Props
-  extends IconProps,
-    ComponentProps<typeof Link>,
-    AutomationTestingProps {
+interface Props extends IconProps, ComponentProps<typeof Link> {
   label: string;
   ignorePaths?: string[];
 }
@@ -66,7 +61,7 @@ export function Head({
 
   return (
     <Tippy
-      className="!rounded-md bg-blue-9 !py-2 !px-3 !opacity-100 be:bg-gray-9 th-dark:bg-gray-true-9"
+      className="!rounded-md bg-blue-9 !px-3 !py-2 !opacity-100 be:bg-gray-9 th-dark:bg-gray-true-9"
       content={label}
       delay={[0, 0]}
       duration={[0, 0]}

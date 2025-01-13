@@ -7,16 +7,16 @@ import (
 
 type (
 	K8sServiceInfo struct {
-		Name                          string
-		UID                           string
-		Type                          string
-		Namespace                     string
-		Annotations                   map[string]string
-		CreationTimestamp             string
-		Labels                        map[string]string
-		AllocateLoadBalancerNodePorts *bool `json:",omitempty"`
-		Ports                         []K8sServicePort
-		Selector                      map[string]string
+		Name                          string              `json:",omitempty"`
+		UID                           string              `json:",omitempty"`
+		Type                          string              `json:",omitempty"`
+		Namespace                     string              `json:",omitempty"`
+		Annotations                   map[string]string   `json:",omitempty"`
+		CreationDate                  string              `json:",omitempty"`
+		Labels                        map[string]string   `json:",omitempty"`
+		AllocateLoadBalancerNodePorts *bool               `json:",omitempty"`
+		Ports                         []K8sServicePort    `json:",omitempty"`
+		Selector                      map[string]string   `json:",omitempty"`
 		IngressStatus                 []K8sServiceIngress `json:",omitempty"`
 
 		// serviceList screen
@@ -48,12 +48,15 @@ func (s *K8sServiceInfo) Validate(request *http.Request) error {
 	if s.Name == "" {
 		return errors.New("missing service name from the request payload")
 	}
+
 	if s.Namespace == "" {
 		return errors.New("missing service namespace from the request payload")
 	}
+
 	if s.Ports == nil {
 		return errors.New("missing service ports from the request payload")
 	}
+
 	return nil
 }
 
@@ -61,10 +64,12 @@ func (r K8sServiceDeleteRequests) Validate(request *http.Request) error {
 	if len(r) == 0 {
 		return errors.New("missing deletion request list in payload")
 	}
+
 	for ns := range r {
 		if len(ns) == 0 {
 			return errors.New("deletion given with empty namespace")
 		}
 	}
+
 	return nil
 }

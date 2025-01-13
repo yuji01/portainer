@@ -4,11 +4,10 @@ import (
 	"net/http"
 
 	portainer "github.com/portainer/portainer/api"
-
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
 	httperrors "github.com/portainer/portainer/api/http/errors"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
 )
 
 // @id RegistryInspect
@@ -27,24 +26,24 @@ import (
 // @failure 500 "Server error"
 // @router /registries/{id} [get]
 func (handler *Handler) registryInspect(w http.ResponseWriter, r *http.Request) *httperror.HandlerError {
-	hasAccess, isAdmin, err := handler.userHasRegistryAccess(r)
-	if err != nil {
-		return httperror.InternalServerError("Unable to retrieve info from request context", err)
-	}
-	if !hasAccess {
-		return httperror.Forbidden("Access denied to resource", httperrors.ErrResourceAccessDenied)
-	}
-
 	registryID, err := request.RetrieveNumericRouteVariableValue(r, "id")
 	if err != nil {
 		return httperror.BadRequest("Invalid registry identifier route variable", err)
 	}
 
-	registry, err := handler.DataStore.Registry().Registry(portainer.RegistryID(registryID))
+	registry, err := handler.DataStore.Registry().Read(portainer.RegistryID(registryID))
 	if handler.DataStore.IsErrObjectNotFound(err) {
 		return httperror.NotFound("Unable to find a registry with the specified identifier inside the database", err)
 	} else if err != nil {
 		return httperror.InternalServerError("Unable to find a registry with the specified identifier inside the database", err)
+	}
+
+	hasAccess, isAdmin, err := handler.userHasRegistryAccess(r, registry)
+	if err != nil {
+		return httperror.InternalServerError("Unable to retrieve info from request context", err)
+	}
+	if !hasAccess {
+		return httperror.Forbidden("Access denied to resource", httperrors.ErrResourceAccessDenied)
 	}
 
 	hideFields(registry, !isAdmin)

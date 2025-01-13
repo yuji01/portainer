@@ -2,9 +2,10 @@ package datastore
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 
-	portaineree "github.com/portainer/portainer/api"
+	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/cli"
 	"github.com/portainer/portainer/api/database/models"
 	dserrors "github.com/portainer/portainer/api/dataservices/errors"
@@ -14,8 +15,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
-
-const beforePortainerVersionUpgradeBackup = "portainer.db.bak"
 
 func (store *Store) MigrateData() error {
 	updating, err := store.VersionService.IsUpdating()
@@ -33,7 +32,7 @@ func (store *Store) MigrateData() error {
 		return errors.Wrap(err, "while migrating legacy version")
 	}
 
-	migratorParams := store.newMigratorParameters(version)
+	migratorParams := store.newMigratorParameters(version, store.flags)
 	migrator := migrator.NewMigrator(migratorParams)
 
 	if !migrator.NeedsMigration() {
@@ -41,7 +40,7 @@ func (store *Store) MigrateData() error {
 	}
 
 	// before we alter anything in the DB, create a backup
-	backupPath, err := store.Backup(version)
+	_, err = store.Backup("")
 	if err != nil {
 		return errors.Wrap(err, "while backing up database")
 	}
@@ -50,10 +49,10 @@ func (store *Store) MigrateData() error {
 	if err != nil {
 		err = errors.Wrap(err, "failed to migrate database")
 
-		log.Warn().Msg("migration failed, restoring database to previous version")
-		err = store.restoreWithOptions(&BackupOptions{BackupPath: backupPath})
-		if err != nil {
-			return errors.Wrap(err, "failed to restore database")
+		log.Warn().Err(err).Msg("migration failed, restoring database to previous version")
+		restoreErr := store.Restore()
+		if restoreErr != nil {
+			return errors.Wrap(restoreErr, "failed to restore database")
 		}
 
 		log.Info().Msg("database restored to previous version")
@@ -63,8 +62,9 @@ func (store *Store) MigrateData() error {
 	return nil
 }
 
-func (store *Store) newMigratorParameters(version *models.Version) *migrator.MigratorParameters {
+func (store *Store) newMigratorParameters(version *models.Version, flags *portainer.CLIFlags) *migrator.MigratorParameters {
 	return &migrator.MigratorParameters{
+		Flags:                   flags,
 		CurrentDBVersion:        version,
 		EndpointGroupService:    store.EndpointGroupService,
 		EndpointService:         store.EndpointService,
@@ -86,6 +86,8 @@ func (store *Store) newMigratorParameters(version *models.Version) *migrator.Mig
 		AuthorizationService:    authorization.NewService(store),
 		EdgeStackService:        store.EdgeStackService,
 		EdgeJobService:          store.EdgeJobService,
+		TunnelServerService:     store.TunnelServerService,
+		PendingActionsService:   store.PendingActionsService,
 	}
 }
 
@@ -109,11 +111,16 @@ func (store *Store) FailSafeMigrate(migrator *migrator.Migrator, version *models
 		return errors.Wrap(err, "while updating version")
 	}
 
-	log.Info().Msg("migrating database from version " + version.SchemaVersion + " to " + portaineree.APIVersion)
+	log.Info().Msg("migrating database from version " + version.SchemaVersion + " to " + portainer.APIVersion)
 
 	err = migrator.Migrate()
 	if err != nil {
 		return err
+	}
+
+	// Special test code to simulate a failure (used by migrate_data_test.go).  Do not remove...
+	if os.Getenv("PORTAINER_TEST_MIGRATE_FAIL") == "FAIL" {
+		panic("test migration failure")
 	}
 
 	err = store.VersionService.StoreIsUpdating(false)
@@ -126,7 +133,6 @@ func (store *Store) FailSafeMigrate(migrator *migrator.Migrator, version *models
 
 // Rollback to a pre-upgrade backup copy/snapshot of portainer.db
 func (store *Store) connectionRollback(force bool) error {
-
 	if !force {
 		confirmed, err := cli.Confirm("Are you sure you want to rollback your database to the previous backup?")
 		if err != nil || !confirmed {
@@ -134,9 +140,7 @@ func (store *Store) connectionRollback(force bool) error {
 		}
 	}
 
-	options := getBackupRestoreOptions(store.commonBackupDir())
-
-	err := store.restoreWithOptions(options)
+	err := store.Restore()
 	if err != nil {
 		return err
 	}

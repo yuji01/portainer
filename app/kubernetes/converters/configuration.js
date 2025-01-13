@@ -14,12 +14,15 @@ class KubernetesConfigurationConverter {
     _.forEach(secret.Data, (entry) => {
       res.Data[entry.Key] = entry.Value;
     });
+    res.data = res.Data;
     res.ConfigurationOwner = secret.ConfigurationOwner;
     res.IsRegistrySecret = secret.IsRegistrySecret;
     res.SecretType = secret.SecretType;
     if (secret.Annotations) {
-      res.ServiceAccountName = secret.Annotations['kubernetes.io/service-account.name'];
+      const serviceAccountAnnotation = secret.Annotations.find((a) => a.key === 'kubernetes.io/service-account.name');
+      res.ServiceAccountName = serviceAccountAnnotation ? serviceAccountAnnotation.value : undefined;
     }
+    res.Labels = secret.Labels;
     return res;
   }
 
@@ -34,7 +37,9 @@ class KubernetesConfigurationConverter {
     _.forEach(configMap.Data, (entry) => {
       res.Data[entry.Key] = entry.Value;
     });
+    res.data = res.Data;
     res.ConfigurationOwner = configMap.ConfigurationOwner;
+    res.Labels = configMap.Labels;
     return res;
   }
 }

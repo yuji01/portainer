@@ -1,9 +1,8 @@
 package endpoint
 
 import (
-	"fmt"
-
 	portainer "github.com/portainer/portainer/api"
+	"github.com/portainer/portainer/api/dataservices"
 	"github.com/portainer/portainer/api/internal/edge/cache"
 
 	"github.com/rs/zerolog/log"
@@ -21,12 +20,14 @@ func (service ServiceTx) BucketName() string {
 // Endpoint returns an environment(endpoint) by ID.
 func (service ServiceTx) Endpoint(ID portainer.EndpointID) (*portainer.Endpoint, error) {
 	var endpoint portainer.Endpoint
+
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.GetObject(BucketName, identifier, &endpoint)
-	if err != nil {
+	if err := service.tx.GetObject(BucketName, identifier, &endpoint); err != nil {
 		return nil, err
 	}
+
+	endpoint.LastCheckInDate, _ = service.service.Heartbeat(ID)
 
 	return &endpoint, nil
 }
@@ -35,8 +36,7 @@ func (service ServiceTx) Endpoint(ID portainer.EndpointID) (*portainer.Endpoint,
 func (service ServiceTx) UpdateEndpoint(ID portainer.EndpointID, endpoint *portainer.Endpoint) error {
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.UpdateObject(BucketName, identifier, endpoint)
-	if err != nil {
+	if err := service.tx.UpdateObject(BucketName, identifier, endpoint); err != nil {
 		return err
 	}
 
@@ -44,6 +44,7 @@ func (service ServiceTx) UpdateEndpoint(ID portainer.EndpointID, endpoint *porta
 	if len(endpoint.EdgeID) > 0 {
 		service.service.idxEdgeID[endpoint.EdgeID] = ID
 	}
+
 	service.service.heartbeats.Store(ID, endpoint.LastCheckInDate)
 	service.service.mu.Unlock()
 
@@ -56,8 +57,7 @@ func (service ServiceTx) UpdateEndpoint(ID portainer.EndpointID, endpoint *porta
 func (service ServiceTx) DeleteEndpoint(ID portainer.EndpointID) error {
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.DeleteObject(BucketName, identifier)
-	if err != nil {
+	if err := service.tx.DeleteObject(BucketName, identifier); err != nil {
 		return err
 	}
 
@@ -65,9 +65,11 @@ func (service ServiceTx) DeleteEndpoint(ID portainer.EndpointID) error {
 	for edgeID, endpointID := range service.service.idxEdgeID {
 		if endpointID == ID {
 			delete(service.service.idxEdgeID, edgeID)
+
 			break
 		}
 	}
+
 	service.service.heartbeats.Delete(ID)
 	service.service.mu.Unlock()
 
@@ -80,22 +82,11 @@ func (service ServiceTx) DeleteEndpoint(ID portainer.EndpointID) error {
 func (service ServiceTx) Endpoints() ([]portainer.Endpoint, error) {
 	var endpoints = make([]portainer.Endpoint, 0)
 
-	err := service.tx.GetAllWithJsoniter(
+	return endpoints, service.tx.GetAll(
 		BucketName,
 		&portainer.Endpoint{},
-		func(obj interface{}) (interface{}, error) {
-			endpoint, ok := obj.(*portainer.Endpoint)
-			if !ok {
-				log.Debug().Str("obj", fmt.Sprintf("%#v", obj)).Msg("failed to convert to Endpoint object")
-				return nil, fmt.Errorf("failed to convert to Endpoint object: %s", obj)
-			}
-
-			endpoints = append(endpoints, *endpoint)
-
-			return &portainer.Endpoint{}, nil
-		})
-
-	return endpoints, err
+		dataservices.AppendFn(&endpoints),
+	)
 }
 
 func (service ServiceTx) EndpointIDByEdgeID(edgeID string) (portainer.EndpointID, bool) {
@@ -116,8 +107,7 @@ func (service ServiceTx) UpdateHeartbeat(endpointID portainer.EndpointID) {
 
 // CreateEndpoint assign an ID to a new environment(endpoint) and saves it.
 func (service ServiceTx) Create(endpoint *portainer.Endpoint) error {
-	err := service.tx.CreateObjectWithId(BucketName, int(endpoint.ID), endpoint)
-	if err != nil {
+	if err := service.tx.CreateObjectWithId(BucketName, int(endpoint.ID), endpoint); err != nil {
 		return err
 	}
 
@@ -125,10 +115,29 @@ func (service ServiceTx) Create(endpoint *portainer.Endpoint) error {
 	if len(endpoint.EdgeID) > 0 {
 		service.service.idxEdgeID[endpoint.EdgeID] = endpoint.ID
 	}
+
 	service.service.heartbeats.Store(endpoint.ID, endpoint.LastCheckInDate)
 	service.service.mu.Unlock()
 
 	return nil
+}
+
+func (service ServiceTx) EndpointsByTeamID(teamID portainer.TeamID) ([]portainer.Endpoint, error) {
+	var endpoints = make([]portainer.Endpoint, 0)
+
+	return endpoints, service.tx.GetAll(
+		BucketName,
+		&portainer.Endpoint{},
+		dataservices.FilterFn(&endpoints, func(e portainer.Endpoint) bool {
+			for t := range e.TeamAccessPolicies {
+				if t == teamID {
+					return true
+				}
+			}
+
+			return false
+		}),
+	)
 }
 
 // GetNextIdentifier returns the next identifier for an environment(endpoint).

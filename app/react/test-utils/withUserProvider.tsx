@@ -8,11 +8,17 @@ const mockUser: User = {
   Id: 1,
   Role: 1,
   Username: 'mock',
+  UseCache: false,
   ThemeSettings: {
     color: 'auto',
   },
 };
 
+/**
+ * A helper function to wrap a component with a UserContext.Provider.
+ *
+ * should only be used in tests
+ */
 export function withUserProvider<T>(
   WrappedComponent: ComponentType<T>,
   user = mockUser
@@ -21,7 +27,7 @@ export function withUserProvider<T>(
   const displayName =
     WrappedComponent.displayName || WrappedComponent.name || 'Component';
 
-  function WrapperComponent(props: T) {
+  function WrapperComponent(props: T & JSX.IntrinsicAttributes) {
     const state = useMemo(() => ({ user }), []);
 
     return (

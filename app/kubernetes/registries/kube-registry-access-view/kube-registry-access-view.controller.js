@@ -1,4 +1,3 @@
-import { confirmDelete } from '@@/modals/confirm';
 import KubernetesNamespaceHelper from 'Kubernetes/helpers/namespaceHelper';
 
 export default class KubernetesRegistryAccessController {
@@ -32,13 +31,7 @@ export default class KubernetesRegistryAccessController {
     const removeNamespaces = namespaces.map(({ value }) => value);
     const nsToUpdate = this.savedResourcePools.map(({ value }) => value).filter((value) => !removeNamespaces.includes(value));
 
-    const displayedMessage =
-      'This registry might be used by one or more applications inside this environment. Removing the registry access could lead to a service interruption for these applications.<br/><br/>Do you wish to continue?';
-    confirmDelete(displayedMessage).then((confirmed) => {
-      if (confirmed) {
-        return this.updateNamespaces(nsToUpdate);
-      }
-    });
+    return this.updateNamespaces(nsToUpdate);
   }
 
   updateNamespaces(namespaces) {
@@ -48,6 +41,7 @@ export default class KubernetesRegistryAccessController {
           namespaces,
         });
         this.$state.reload(this.$state.current);
+        this.Notifications.success('Success', 'Registry access updated');
       } catch (err) {
         this.Notifications.error('Failure', err, 'Failed saving registry access');
       }

@@ -1,7 +1,6 @@
 package endpoints
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -9,12 +8,14 @@ import (
 	"strconv"
 	"strings"
 
-	httperror "github.com/portainer/libhttp/error"
-	"github.com/portainer/libhttp/request"
-	"github.com/portainer/libhttp/response"
 	portainer "github.com/portainer/portainer/api"
 	"github.com/portainer/portainer/api/http/client"
 	"github.com/portainer/portainer/api/internal/endpointutils"
+	httperror "github.com/portainer/portainer/pkg/libhttp/error"
+	"github.com/portainer/portainer/pkg/libhttp/request"
+	"github.com/portainer/portainer/pkg/libhttp/response"
+
+	"github.com/segmentio/encoding/json"
 )
 
 type dockerhubStatusResponse struct {
@@ -67,7 +68,7 @@ func (handler *Handler) endpointDockerhubStatus(w http.ResponseWriter, r *http.R
 	if registryID == 0 {
 		registry = &portainer.Registry{}
 	} else {
-		registry, err = handler.DataStore.Registry().Registry(portainer.RegistryID(registryID))
+		registry, err = handler.DataStore.Registry().Read(portainer.RegistryID(registryID))
 		if handler.DataStore.IsErrObjectNotFound(err) {
 			return httperror.NotFound("Unable to find a registry with the specified identifier inside the database", err)
 		} else if err != nil {
@@ -136,7 +137,7 @@ func getDockerHubLimits(httpClient *client.HTTPClient, token string) (*dockerhub
 		return nil, err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Add("Authorization", "Bearer "+token)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {

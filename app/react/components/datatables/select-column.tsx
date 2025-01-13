@@ -2,7 +2,7 @@ import { ColumnDef, Row } from '@tanstack/react-table';
 
 import { Checkbox } from '@@/form-components/Checkbox';
 
-export function createSelectColumn<T>(): ColumnDef<T> {
+export function createSelectColumn<T>(dataCy: string): ColumnDef<T> {
   let lastSelectedId = '';
 
   return {
@@ -10,18 +10,29 @@ export function createSelectColumn<T>(): ColumnDef<T> {
     header: ({ table }) => (
       <Checkbox
         id="select-all"
+        data-cy={`select-all-checkbox-${dataCy}`}
         checked={table.getIsAllRowsSelected()}
         indeterminate={table.getIsSomeRowsSelected()}
         onChange={table.getToggleAllRowsSelectedHandler()}
+        disabled={table.getRowModel().rows.every((row) => !row.getCanSelect())}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        aria-label="Select all rows"
+        title="Select all rows"
       />
     ),
     cell: ({ row, table }) => (
       <Checkbox
         id={`select-row-${row.id}`}
+        data-cy={`select-row-checkbox_${row.id}`}
         checked={row.getIsSelected()}
         indeterminate={row.getIsSomeSelected()}
         onChange={row.getToggleSelectedHandler()}
+        disabled={!row.getCanSelect()}
         onClick={(e) => {
+          e.stopPropagation();
+
           if (e.shiftKey) {
             const { rows, rowsById } = table.getRowModel();
             const rowsToToggle = getRowRange(rows, row.id, lastSelectedId);
@@ -31,8 +42,10 @@ export function createSelectColumn<T>(): ColumnDef<T> {
 
           lastSelectedId = row.id;
         }}
+        aria-label="Select row"
       />
     ),
+    enableHiding: false,
     meta: {
       width: 50,
     },

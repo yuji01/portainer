@@ -24,11 +24,11 @@ func (service ServiceTx) EdgeStacks() ([]portainer.EdgeStack, error) {
 	err := service.tx.GetAll(
 		BucketName,
 		&portainer.EdgeStack{},
-		func(obj interface{}) (interface{}, error) {
+		func(obj any) (any, error) {
 			stack, ok := obj.(*portainer.EdgeStack)
 			if !ok {
 				log.Debug().Str("obj", fmt.Sprintf("%#v", obj)).Msg("failed to convert to EdgeStack object")
-				return nil, fmt.Errorf("Failed to convert to EdgeStack object: %s", obj)
+				return nil, fmt.Errorf("failed to convert to EdgeStack object: %s", obj)
 			}
 
 			stacks = append(stacks, *stack)
@@ -44,8 +44,7 @@ func (service ServiceTx) EdgeStack(ID portainer.EdgeStackID) (*portainer.EdgeSta
 	var stack portainer.EdgeStack
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.GetObject(BucketName, identifier, &stack)
-	if err != nil {
+	if err := service.tx.GetObject(BucketName, identifier, &stack); err != nil {
 		return nil, err
 	}
 
@@ -65,18 +64,17 @@ func (service ServiceTx) EdgeStackVersion(ID portainer.EdgeStackID) (int, bool) 
 func (service ServiceTx) Create(id portainer.EdgeStackID, edgeStack *portainer.EdgeStack) error {
 	edgeStack.ID = id
 
-	err := service.tx.CreateObjectWithId(
+	if err := service.tx.CreateObjectWithId(
 		BucketName,
 		int(edgeStack.ID),
 		edgeStack,
-	)
-	if err != nil {
+	); err != nil {
 		return err
 	}
 
 	service.service.mu.Lock()
 	service.service.idxVersion[id] = edgeStack.Version
-	service.service.cacheInvalidationFn(id)
+	service.service.cacheInvalidationFn(service.tx, id)
 	service.service.mu.Unlock()
 
 	return nil
@@ -89,13 +87,12 @@ func (service ServiceTx) UpdateEdgeStack(ID portainer.EdgeStackID, edgeStack *po
 
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.UpdateObject(BucketName, identifier, edgeStack)
-	if err != nil {
+	if err := service.tx.UpdateObject(BucketName, identifier, edgeStack); err != nil {
 		return err
 	}
 
 	service.service.idxVersion[ID] = edgeStack.Version
-	service.service.cacheInvalidationFn(ID)
+	service.service.cacheInvalidationFn(service.tx, ID)
 
 	return nil
 }
@@ -119,14 +116,13 @@ func (service ServiceTx) DeleteEdgeStack(ID portainer.EdgeStackID) error {
 
 	identifier := service.service.connection.ConvertToKey(int(ID))
 
-	err := service.tx.DeleteObject(BucketName, identifier)
-	if err != nil {
+	if err := service.tx.DeleteObject(BucketName, identifier); err != nil {
 		return err
 	}
 
 	delete(service.service.idxVersion, ID)
 
-	service.service.cacheInvalidationFn(ID)
+	service.service.cacheInvalidationFn(service.tx, ID)
 
 	return nil
 }
